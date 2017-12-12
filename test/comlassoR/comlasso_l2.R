@@ -1,0 +1,450 @@
+#####################################
+### LASSO for categorical variables
+### Programmed by Hyo Won An
+### Programmed on Jan / 24 / 2011
+### Revised on May / 4 / 2011
+### Final revised on August / 6/ 2015
+### Rebuilding on Auguts / 5 / 2016 by Hosik Choi
+### Author: Jon-June Jeon, Hyo Won An, Hosik Choi
+######################################
+
+### Input
+# n = number of observation
+# p = number of category
+# K = for each category, vector of the numbers of dummies.
+#     for example, 3 category, c(4, 5, 10) for each category.
+# s0 = when s0 == sum(abs(beta)), stop
+
+### Output
+# s = solution beta's 1-norm
+# beta0 = intercept
+# weights = vector: adaptive weights
+### Function start
+comlasso_l2 <- function(n, p, K, X.raw, y, weights=NULL, 
+  max.steps=length(K)*min(n,sum(K))+1, lam.min=0, tol = 1e-8, trace=FALSE){
+  s0 <- 1e8;   
+
+  y <- drop(y)
+  K.idx <- c()
+  for(j in 1:length(K)){
+    if(j == 1)
+      K.idx[j] = K[j]
+    else
+      K.idx[j] = K.idx[j-1]+K[j]
+  }
+  w.list <- vector("list", p)
+  
+  if(is.null(weights)){
+    weights <- rep(1,sum(K.idx))
+  }  
+  for(j in 1:p){
+    if(j == 1)
+      w.list[[j]] <- weights[1:K.idx[1]]
+    else
+      w.list[[j]] <- weights[(K.idx[j-1]+1):K.idx[j]]
+  }
+  
+  ltype = "regression" #match.arg(ltype)
+  
+  if(ltype=="regression"){
+    Res_l2 <- Res.reg_l2
+    getobjective_l2 <- getobjective.res_l2
+    getgcorr_l2 <- getgcorr.reg_l2
+  }
+  OUT = FALSE # TRUE if one of the KKT conditions is violated
+  
+  ### Variable definition
+  mu <- as.vector(matrix(NaN, p, 1))
+  lambda = 0
+  
+  seqN = 1:n
+  beta <- vector("list", p)
+  sign <- vector("list", p)   # 1 if the corresponding beta is positive, -1 if negative
+  for(j in 1:p){
+    beta[[j]] <- vector("numeric", K[j])
+    sign[[j]] <- vector("numeric", K[j])
+  }
+  A <- vector("list", p)      # the indices of active variables
+  
+  # Generate the design matrix X from the raw design matrix X.raw
+  X <- vector("list", p)
+  for(j in 1:p){
+    if(j == 1){
+      X[[j]] <- X.raw[,1:K.idx[1]]
+    }else{
+      X[[j]] <- X.raw[,(K.idx[j-1]+1):K.idx[j]]
+    }
+  }
+  ### Initialization : beta0 <- initial(y-mean(y), gam)+mean(y)
+  beta0 <- mean(y)
+  res <- Res_l2(y,beta0)
+
+  # find the initial lambda and mu by linear programming
+  corr <- list()
+  for(j in 1:p){
+    corr[[j]] <- getgcorr_l2(y, t(X[[j]]), res)
+  }
+  init.sol <- get.init.solution_l2(corr, w.list, K, tol)
+  
+  act.categ <- init.sol$act.categ
+  lambda <- init.sol$lambda
+  mu[act.categ] <- init.sol$mu
+  A.cand1 <- init.sol$A.cand1 # Candidates of initial active variables
+  A.cand2 <- init.sol$A.cand2
+  
+  if(trace){
+    cat("(lambda,mu)=", lambda, mu, "\n")
+  }
+  A[[act.categ]] <- sort(c(A.cand1[[act.categ]],A.cand2[[act.categ]]))
+  sign[[act.categ]][A.cand1[[act.categ]]] = 1
+  sign[[act.categ]][A.cand2[[act.categ]]] = -1
+  
+  ### Main loop
+  boolpath = TRUE
+  one <- matrix(1,n,1)
+  cnt = 1         # the count of iterations
+  s = 0
+  s.rec <- c(); lam.rec <- c(); mu.rec <- c()
+  beta0.rec <- c()
+  beta.rec <- vector("list", p)
+  
+  while(boolpath){
+    # store path of parameters
+    s.rec <- c(s.rec, s)
+    
+    lam.rec <- c(lam.rec, lambda)
+    mu.rec <- cbind(mu.rec, mu)
+    beta0.rec <- c(beta0.rec, beta0)
+    
+    for(j in 1:p){
+      beta.rec[[j]] <- cbind(beta.rec[[j]], beta[[j]])
+    }
+    if(trace)
+      cat("<", cnt, ">\n") # cat("\n<", cnt, ">\n")
+    if(cnt>=max.steps)
+      break
+    ### Define variables
+    cnt.categ = 0 # number of active categorical variables
+    idx.A <- c()  # idx.A[i] means the index of the ith active variable
+    idx.B <- c()  # idx.B[i] means the index of the ith inactive variable
+    
+    for(j in 1:p){
+      if(length(A[[j]]) > 0){
+        idx.A <- c(idx.A, j)
+        cnt.categ = cnt.categ+1
+      }else
+        idx.B <- c(idx.B, j)
+    }
+    X.A <- c()    # the design matrix corresponding to active variables
+    beta.A <- c() # beta corresponding to active variables
+    w.A <- c()    # weights corresponding to active variables    
+    mu.A <- c()   # mu corresponding to active variables
+    
+    for(j in 1:cnt.categ){
+      j.A <- idx.A[j]
+      idx.j.A <- A[[j.A]]
+      X.A <- cbind(X.A, X[[j.A]][,idx.j.A])
+      beta.A <- c(beta.A, beta[[j.A]][idx.j.A])
+      w.A <- c(w.A, w.list[[j.A]][idx.j.A])
+      mu.A <- c(mu.A, mu[j.A])
+    }
+    cnt.dummy <- ncol(X.A) # number of active dummy variables
+    fx <- beta0 + drop(X.A %*% beta.A)
+    res <- Res_l2(y,fx) # compute the residual to check the KKT condition
+    
+    ### 1. Compute right derivatives
+    M <- c(n, t(one) %*% X.A, rep(0,1+cnt.categ)) 
+    # the matrix of coefficients in the linear system
+    
+    for(j in 1:cnt.categ){
+      j.A = idx.A[j] 
+      idx.j.A <- A[[j.A]]
+      mu.matr <- matrix(0, length(idx.j.A), cnt.categ)
+      mu.matr[,j] <- 1
+      t.j.A <- t(X[[j.A]][, idx.j.A, drop=F])
+      M <- rbind(M, cbind(t.j.A %*% one, t.j.A %*% X.A, 
+        w.list[[j.A]][idx.j.A]*sign[[j.A]][idx.j.A],mu.matr))
+    }
+    wsign.vec <- c()
+    for(j in 1:cnt.categ){
+      j.A = idx.A[j]
+      idx.j.A <- A[[j.A]]
+      wsign.vec <- c(wsign.vec, w.list[[j.A]][idx.j.A]*sign[[j.A]][idx.j.A])
+    }
+    M <- rbind(M, c(0, wsign.vec, rep(0, 1+cnt.categ)))
+    
+    for(i in 1:cnt.categ){
+      new.row = 0
+      for(j in 1:cnt.categ){
+        if(i == j)
+          new.row <- c(new.row, rep(1, length(A[[idx.A[j]]])))
+        else
+          new.row <- c(new.row, rep(0, length(A[[idx.A[j]]])))
+      }
+      new.row <- c(new.row, rep(0, 1+cnt.categ))
+      M <- rbind(M, new.row)
+    }
+    b <- c(0, rep(0,cnt.dummy), 1, rep(0,cnt.categ))
+    
+    # Compute the right derivative of parameters
+    if(min(abs(svd(M)$d))<1e-10){
+      cat("Lapack routine dgesv: system is exactly singular. Break\n")
+      break
+    }
+    rderiv <- solve(M, b)
+    
+    ### Check the 1st KKT condition: beta0
+    if(abs(getgcorr_l2(y, t(one), res)) > 1e-5){ #tol){
+      if(trace){
+        cat("The 1st KKT condition violated.", getgcorr_l2(y, t(one), res), "\n")
+      }
+      break
+    }
+    ### Check the 5th KKT condition
+    if(abs(sum(w.A*abs(beta.A))-s) > tol){
+      if(trace)
+        cat("The 5th KKT condition violated.\n")
+      break
+    }
+    ### Check the 6th KKT condition: sum to 0 constraint
+    for(j in 1:p){
+      if(abs(sum(beta[[j]])) > tol){
+        if(trace)
+          cat("The 6th KKT condition violated.\n")
+        OUT <- TRUE
+        break
+      }
+    }
+    ### Check the 7th KKT condition
+    if(lambda < lam.min){
+      if(trace)
+        cat("The 7th KKT condition violated.\n")
+      break
+    }
+    if(OUT == TRUE)
+      break
+    
+    ### 2. Compute how much increase of s is needed to get to the first occuring event
+    delta <- matrix(Inf,4)
+    
+    ### 2-1. Derive when active dummy variables become inactive
+    step.vec = -beta.A/rderiv[2:(cnt.dummy+1)]
+    step.vec[step.vec < tol] = Inf
+    
+    delta[1] <- min(step.vec)
+    cand.inact <- c()
+    
+    for(j in 1:cnt.categ){
+      j.A = idx.A[j]; idx.j.A <- A[[j.A]]
+      cand.inact <- rbind(cand.inact, cbind(rep(j.A, length(idx.j.A)), idx.j.A))
+    }
+    # 
+    cand.inact = as.matrix(cand.inact[step.vec == min(step.vec),])
+    if(ncol(cand.inact) == 1)
+      cand.inact <- t(cand.inact)
+    
+    ### 2-2-a. Compute the distance needed to activate a new categorical variable
+    #cat(cnt, "th idx.B=", idx.B, "\n")
+    if(!is.null(idx.B)){
+      corr <- vector(mode="list", length=length(idx.B))
+      d_corr <- vector(mode="list", length=length(idx.B))
+      d_fx <- drop(rderiv[1]+ X.A%*%rderiv[2:(cnt.dummy+1)]) # df(x)/ds
+      
+      for(j in 1:length(idx.B)){
+        corr[[j]] = getgcorr_l2(y, t(X[[idx.B[j]]]), res)
+        d_corr[[j]] = d_getgcorr_l2(t(X[[idx.B[j]]]), d_fx)
+      }
+      insol <- get.new.mu.step(corr,d_corr,K[idx.B],w.list[idx.B],lambda,d_lam=rderiv[(cnt.dummy+2)])
+      
+      if(insol$feasibility==FALSE){
+        delta[2] <- Inf
+        break
+      }else{
+        istar <- which.min(insol$step.vec)
+        cand.categ <- list()
+        cand.categ[[1]] <- idx.B[istar]
+        cand.categ[[2]] <- insol$categ1[[istar]]
+        cand.categ[[3]] <- insol$categ2[[istar]]
+        cand.categ[[4]] <- insol$cand.mu[istar]
+        delta[2] <- if(NROW(insol$step.vec) > 0) min(insol$step.vec) else Inf
+      }
+    }else{
+      delta[2] <- Inf
+    }
+    
+    ### 2-2-b. Compute the distance needed to activate a new dummy variable of active categorical variables
+    step.vec <- vector("numeric", cnt.categ)
+    sign.vec <- vector("numeric", cnt.categ)
+    dummy <- vector("numeric", cnt.categ)
+    
+    for(j in 1:cnt.categ){
+      j.A = idx.A[j]
+      step.length <- matrix(Inf, nrow=K[j.A], ncol=2)
+      a.pos = which(sign[[j.A]] == 1)[1]
+      a.neg = which(sign[[j.A]] == -1)[1]
+      
+      for(k in 1:K[j.A]){
+        #cat(j.A, "th categorical", k, "\n" )        
+        X.j.A.k <- t(X[[j.A]][,k])
+        kgrad <- getgcorr_l2(y, X.j.A.k, res)
+        
+        if(!is.element(k, A[[j.A]])){
+          # Check the 3rd KKT condition
+          flag1 <- kgrad <= mu[j.A] + lambda*w.list[[j.A]][k] + tol
+          flag2 <- kgrad >= mu[j.A] - lambda*w.list[[j.A]][k] - tol
+          #cat("flags",c(flag1,flag2), tol,"\n")
+          #if(!flag1) cat(kgrad-mu[j.A] - lambda*w.list[[j.A]][k], "\n")
+          if(!flag1 | !flag2){
+            cat("The 3rd KKT condition violated.\n")
+            OUT = TRUE
+            break
+          }
+          d_fx_j.E <- X.j.A.k %*% (rderiv[1]+X.A %*% rderiv[2:(cnt.dummy+1)])
+          left.term = d_fx_j.E + rderiv[cnt.dummy+2]* w.list[[j.A]][k]+rderiv[cnt.dummy+2+j]
+          right.term = kgrad - lambda * w.list[[j.A]][k]-mu.A[j]
+          
+          step.length[k,2] = if(right.term/left.term > tol){right.term/left.term} else {Inf}
+          
+          left.term = d_fx_j.E - rderiv[cnt.dummy+2]* w.list[[j.A]][k]+rderiv[cnt.dummy+2+j]
+          right.term = kgrad + lambda * w.list[[j.A]][k]-mu.A[j]
+          
+          step.length[k,1] = if(right.term/left.term > tol){right.term/left.term} else {Inf}
+        }else{
+          #Check the 2nd KKT condition
+          #cat(cnt, "iter=", k, "th", "sign=", sign[[j.A]][k], "lambda=", lambda, "kkt", abs(-kgrad + lambda*sign[[j.A]][k] + mu[j.A]), "\n")
+          if(abs(-kgrad + lambda*sign[[j.A]][k] * w.list[[j.A]][k] + mu[j.A]) > tol){
+            cat("Active set: The 2nd KKT condition violated.", abs(-kgrad + lambda*sign[[j.A]][k] * w.list[[j.A]][k] + mu[j.A]),"\n")
+            OUT = TRUE
+            break
+          }
+        }
+      } # for
+      
+      if(OUT == TRUE){
+        break
+      }
+      step.vec[j] <- min(step.length)
+      
+      dummy[j] <- which(step.length == min(step.length), arr.ind = TRUE)[1]
+      sign.vec[j] <- (which(step.length == min(step.length), arr.ind = TRUE)[2] - 1) * 2 - 1
+    } # outer for
+    
+    if(OUT == TRUE) break
+    
+    i <- which.min(step.vec)
+    
+    cand.dummy <- c(idx.A[i], dummy[i], sign.vec[i])
+    delta[3] <- min(step.vec)
+    
+    ### 2-3. Compute the distance needed for lambda to become 0
+    if(rderiv[2+cnt.dummy]>0){
+      delta[4] <- 0
+      break
+    }
+    lam.final <- (lam.min-lambda)/rderiv[2+cnt.dummy]
+    
+    delta[4] = ifelse(lam.final < tol, Inf, lam.final)
+    #if(abs(lam.final)<tol)
+    #  lam.final <- 0
+
+    delta.f <- min(delta)
+    
+    if(s+delta.f >= s0){
+      delta.f=s0-s
+      boolpath=FALSE
+    }
+    ### 3. Update parameters by step length obtained from section 2
+    beta0 = beta0 + delta.f * rderiv[1]
+    beta.A = beta.A + delta.f * rderiv[2:(cnt.dummy + 1)]
+    lambda = lambda + delta.f * rderiv[cnt.dummy + 2]
+    mu.A = mu.A + delta.f * rderiv[(cnt.dummy + 3):length(rderiv)]    
+    
+    idx.C = 1
+    for(j in 1:cnt.categ){
+      j.A = idx.A[j]
+      beta[[j.A]][A[[j.A]]] = beta.A[idx.C:(idx.C+length(A[[j.A]])-1)]
+      idx.C = idx.C + length(A[[j.A]])
+    }
+    mu[idx.A] = mu.A
+    
+    EPO <- which.min(delta)
+    if(trace)
+      cat(">> ", cnt, "th iteration minimum event", EPO, ": ", delta, "\n")
+    
+    ### 4. Update the active set according to the result of section 2
+    if(EPO == 1){
+      for(i in 1:nrow(cand.inact)){
+        j.A = cand.inact[i,1]
+        A[[j.A]] = setdiff(A[[j.A]], cand.inact[i,2])
+        sign[[j.A]][cand.inact[i,2]] = 0
+        #if(trace) cat(">> Dummy ", cand.inact[i,2], " of category ", cand.inact[i,1], " deleted.\n")
+      }
+    }
+    if(EPO == 2){
+      A[[cand.categ[[1]]]] <- sort(union(A[[cand.categ[[1]]]], union(cand.categ[[2]], cand.categ[[3]])))
+      sign[[cand.categ[[1]]]][cand.categ[[2]]] = 1
+      sign[[cand.categ[[1]]]][cand.categ[[3]]] = -1
+      
+      mu[cand.categ[[1]]] <- cand.categ[[4]]
+      if(trace) cat(">> Dummy ", cand.categ[[2]], cand.categ[[3]], " of category ", cand.categ[[1]], " added.\n")
+    }
+    if(EPO == 3){
+      A[[cand.dummy[1]]] <- sort(union(A[[cand.dummy[1]]], cand.dummy[2]))
+      sign[[cand.dummy[1]]][cand.dummy[2]] <- cand.dummy[3]
+      if(trace) cat(">> Dummy ", cand.dummy[2], " of category ", cand.dummy[1], " added.\n")
+    }
+    if(EPO == 4){
+      boolpath = FALSE
+      if(trace)
+        cat("Lambda is ", lam.min, "\n")
+    }
+    s = s + delta.f
+    if(lambda <1e-10)
+      break
+    
+    cnt = cnt + 1
+  }
+  
+  ### Finally check the KKT condition
+  for(j in 1:cnt.categ){
+    j.A = idx.A[j]
+    res = Res_l2(y, beta0 + X.A %*% beta.A)
+    tmp.gcorr <- getgcorr_l2(y, t(X[[j.A]]), res)
+    Act <- A[[j.A]]
+    kktvar <- abs(-tmp.gcorr[Act] + lambda*sign[[j.A]][Act]*w.list[[j.A]][Act] + mu[j.A])
+    if(trace)
+      cat("KKT",round(kktvar,3),"\n")
+    if(any(kktvar > tol)){
+      if(trace)
+        cat("The 2nd KKT condition violated(last).\n")    
+      OUT = TRUE
+      break
+    }
+  }
+  s.rec <- c(s.rec, s)
+  if(abs(lam.rec[length(lam.rec)]-lambda)>1e-10){
+    lam.rec <- c(lam.rec, lambda)
+    for(j in 1:p){
+      beta.rec[[j]] <- cbind(beta.rec[[j]],beta[[j]])
+    }
+    beta0.rec <- c(beta0.rec, beta0)
+    mu.rec <- cbind(mu.rec, mu)
+  }
+  if(min(lam.rec)>1e-12){
+    ln <- length(lam.rec)
+    lam.rec <- c(lam.rec, 0)
+    for(j in 1:p){
+      beta.rec[[j]] <- cbind(beta.rec[[j]],beta.rec[[j]][,ln])
+    }
+    beta0.rec <- c(beta0.rec, beta0.rec[ln])
+    mu.rec <- cbind(mu.rec, mu.rec[ln])
+  }
+  
+  obj <- list(beta0.rec=beta0.rec, beta.rec=beta.rec, 
+    s=s.rec, mu=mu.rec, lambda=lam.rec, beta0=beta0, beta=beta,
+    ltype=ltype,n=n,p=p,K=K,weights=weights)
+  
+  class(obj) <- "comlasso"
+  
+  return(invisible(obj))
+}
