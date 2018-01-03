@@ -5,7 +5,7 @@
 using namespace Rcpp;
 // [[Rcpp::export]]
 
-arma::mat Res_reg_l2 (arma::mat y, arma::mat fx) 
+arma::mat Res_l2_C (arma::mat y, arma::mat fx) 
 {
   arma::mat z = y-fx;
   return(z);

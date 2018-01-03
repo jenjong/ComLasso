@@ -1,28 +1,18 @@
-#####################################
-### LASSO for categorical variables
-### Programmed by Hyo Won An
-### Programmed on Jan / 24 / 2011
-### Revised on May / 4 / 2011
-### Final revised on August / 6/ 2015
-### Rebuilding on Auguts / 5 / 2016 by Hosik Choi
-### Author: Jon-June Jeon, Hyo Won An, Hosik Choi
-######################################
+rm(list = ls()) ; gc()
+setwd("D:/Jeon/rcode/ComLasso/test")
+source("comlasso_funcs_l2.R")
+n = 30
+p = 3*1
+K = rep(c(3,3,4),1*1)
+set.seed(1)
+X.raw = matrix(rnorm(n*sum(K)), n, sum(K))
+y = rnorm(n)
+weights=NULL
+max.steps = 30
+lam.min=0
+tol=1e-08
+trace=FALSE
 
-### Input
-# n = number of observation
-# p = number of category
-# K = for each category, vector of the numbers of dummies.
-#     for example, 3 category, c(4, 5, 10) for each category.
-# s0 = when s0 == sum(abs(beta)), stop
-
-### Output
-# s = solution beta's 1-norm
-# beta0 = intercept
-# weights = vector: adaptive weights
-### Function start
-comlasso_l2 <- function(n, p, K, X.raw, y, weights=NULL, 
-  max.steps=length(K)*min(n,sum(K))+1, lam.min=0, tol = 1e-8, trace=FALSE)
-{
   s0 <- 1e8
   y <- as.matrix(y,n,1)
   K.idx <- c()
@@ -77,7 +67,7 @@ comlasso_l2 <- function(n, p, K, X.raw, y, weights=NULL,
   }
   ### Initialization : beta0 <- initial(y-mean(y), gam)+mean(y)
   beta0 <- matrix(mean(y),n,1) 
-  res <- Res_l2_C(y,beta0)
+  res <- Res_l2(y,beta0)
 
   # find the initial lambda and mu by linear programming
   corr <- list()
@@ -86,6 +76,7 @@ comlasso_l2 <- function(n, p, K, X.raw, y, weights=NULL,
   }
   init.sol <- get.init.solution_l2(corr, w.list, K, tol)
   
+    
   act.categ <- init.sol$act.categ
   lambda <- init.sol$lambda
   mu[act.categ] <- init.sol$mu
@@ -108,7 +99,7 @@ comlasso_l2 <- function(n, p, K, X.raw, y, weights=NULL,
   beta0.rec <- c()
   beta.rec <- vector("list", p)
   
-  while(boolpath){
+  #while(boolpath){
     # store path of parameters
     s.rec <- c(s.rec, s)
     
@@ -192,7 +183,7 @@ comlasso_l2 <- function(n, p, K, X.raw, y, weights=NULL,
       break
     }
     rderiv <- solve(M, b)
-    
+  
     ### Check the 1st KKT condition: beta0
     if(abs(getgcorr_l2(y, t(one), res)) > 1e-5){ #tol){
       if(trace){
