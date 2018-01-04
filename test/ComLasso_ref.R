@@ -1,9 +1,9 @@
 rm(list = ls()) ; gc()
 setwd("D:/Jeon/rcode/ComLasso/test")
 source("comlasso_funcs_l2.R")
-n = 30
-p = 3*1
-K = rep(c(3,3,4),1*1)
+n = 100
+p = 3*2000
+K = rep(c(3,3,4),1*2000)
 set.seed(1)
 X.raw = matrix(rnorm(n*sum(K)), n, sum(K))
 y = rnorm(n)

@@ -1,39 +1,15 @@
-rm(list = ls()) ; gc()
-library(Matrix)
-# Rtools is required and Path for rtools should be set.
-#library(Rcpp)
-#library(inline)
-#library(RcppArmadillo)
-#setwd("D:/Jeon/rcode/ComLasso/test")
-# sourceCpp('inner.cpp')
-
-############### comlasso
-### Input
-# n = number of observation
-# p = number of category
-# K = for each category, vector of the numbers of dummies.
-#     for example, 3 category, c(4, 5, 10) for each category.
-# s0 = when s0 == sum(abs(beta)), stop
-
-rm( list = ls())
-n = 100
-K = 3*200
-pk = rep(c(3,3,4),1*200)
-p = sum(pk)
-set.seed(2)
-X = matrix(rnorm(n*p), n, p)
-y = rnorm(n)
-lam_min=0
-tol=1e-08
-
 KKT_fun<- function(beta0, beta_vec, mu)
 {
   res <- drop(y - (beta0 + X%*%beta_vec))
   (-t(X)%*%res + rep(mu, pk))
 }
 
- 
-  # Setting index function #######################################################
+comLasso <- function(X,y,pk,lam_min,tol=1e-8)
+{
+  n = length(y)
+  K = length(pk)
+  p = sum(pk)
+ # Setting index function #######################################################
   # starting and ending index in each group
   idx_gs <- cumsum(pk)-pk+1
   idx_ge <- cumsum(pk)
@@ -338,7 +314,7 @@ KKT_fun<- function(beta0, beta_vec, mu)
     if (which.min(delta) == 3) act_type <- "i_act"  
     if (which.min(delta) == 4) act_type <- "t_act"
     
-#    cat("Type of update:", act_type, "\n")
+    #    cat("Type of update:", act_type, "\n")
     
     if (act_type == "g_van")
     {
@@ -348,7 +324,7 @@ KKT_fun<- function(beta0, beta_vec, mu)
       beta_sign_vec[sidx] <- 0
       beta_vec_A[sidx] <- FALSE
       mu[k_A] <- NA
-      # correct set_g_A !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      # correct set_g_A  for improving algorithm !!!
       del_idx <- which(set_g_A==k_A)
       set_g_A[del_idx] <- 0;
       act_group <- sort(set_g_A[set_g_A!=0])
@@ -386,6 +362,9 @@ KKT_fun<- function(beta0, beta_vec, mu)
       k_A <- dict_idx_k[jstar3]
       num_g_A[k_A] <- num_g_A[k_A] + 1
     }
+
+    # KKT condition check
+    # stationary condition
     check_vec <- KKT_fun(beta0,beta_vec,mu)
     cb1 <- abs(check_vec[beta_vec_A] + lambda*beta_sign_vec[beta_vec_A])
     if (max(cb1)>tol) 
@@ -400,22 +379,13 @@ KKT_fun<- function(beta0, beta_vec, mu)
       break
     }
     # update variable end ------------------------------------------------------>
-    
-    # KKT condition check
-    # stationary condition
-    
-    
-    
     # LOOP procudure end ---------------------------------------------------------
   }  
-  coefficients <- beta_mat[1:(rec_idx-1),1:(p+1)]
+  coefMat <- beta_mat[1:(rec_idx-1),1:(p+1)]
+  colnames(coefMat) <- c("b0", paste("b", dict_idx_k,dict_idx_j,sep="_" ))
+  lambda_vec <- beta_mat[1:(rec_idx-1),1+p+1]
+  return(list(coefMat = coefMat, lambda_vec = lambda_vec))
+}  
   
   
-  
-  
-# KKT_fun(beta0,beta_vec,mu)
-#   
-# beta_mat[1:(rec_idx-1),]
-# act_group
-# sum(beta_vec_A)
-# beta_mat[1:rec_idx,]
+

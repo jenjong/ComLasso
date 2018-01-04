@@ -73,5 +73,17 @@ xtable(cbind(parset,aa))
 
 
 
+pk = rep(c(3,3,4),1*200)
+Cm <- matrix(0,K,p)
+for ( i in 1:K)
+{
+  sidx <- idx_gs[i]:idx_ge[i]
+  Cm[i,sidx]<-1
+}
+system.time(gfun <- genlasso(y=y,X=X,D=Cm,approx=FALSE,maxsteps=2000,minlam=0,
+                             rtol=1e-07,btol=1e-07,eps=1e-4,verbose=FALSE,svd=FALSE)
+)[3]
+
+
 
 
