@@ -1,5 +1,6 @@
 rm(list = ls())
-source("D:/Jeon/rcode/ComLasso/library/ComLAssoR.R")
+library(Matrix)
+source("D:/Jeon/rcode/ComLasso/library/ComLassoR.R")
 n = 100
 pk = rep(c(3,3,4),100)
 p = sum(pk)

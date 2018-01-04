@@ -409,9 +409,9 @@ KKT_fun<- function(beta0, beta_vec, mu)
     # LOOP procudure end ---------------------------------------------------------
   }  
   coefficients <- beta_mat[1:(rec_idx-1),1:(p+1)]
-  
-  
-  
+  colnames(coefficients) <- c("b0", paste("b", dict_idx_k,dict_idx_j,sep="_" ))
+  lambda_vec <- beta_mat[1:(rec_idx-1),1+p+1]
+  # mu
   
 # KKT_fun(beta0,beta_vec,mu)
 #   
