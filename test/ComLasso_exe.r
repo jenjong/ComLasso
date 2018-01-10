@@ -1,10 +1,10 @@
 rm(list = ls()) ; gc()
 library(Matrix)
 # Rtools is required and Path for rtools should be set.
-#library(Rcpp)
-#library(inline)
-#library(RcppArmadillo)
-#setwd("D:/Jeon/rcode/ComLasso/test")
+# library(Rcpp)
+# library(inline)
+# library(RcppArmadillo)
+ setwd("D:/Jeon/rcode/ComLasso/test")
 # sourceCpp('inner.cpp')
 
 ############### comlasso
@@ -15,24 +15,29 @@ library(Matrix)
 #     for example, 3 category, c(4, 5, 10) for each category.
 # s0 = when s0 == sum(abs(beta)), stop
 
-rm( list = ls())
-n = 100
-K = 3*200
-pk = rep(c(3,3,4),1*200)
-p = sum(pk)
-set.seed(2)
-X = matrix(rnorm(n*p), n, p)
-y = rnorm(n)
-lam_min=0
-tol=1e-08
-
+#rm( list = ls())
+ n = 100
+ pk = rep(c(3,3,4),50)
+ p = sum(pk)
+ set.seed(3)
+ X = matrix(rnorm(n*p), n, p)
+ y = rnorm(n)
+ lam_min=0
+ tol=1e-08
+ max_iter = 1e5
+#
+#load("test-j.rdata")
+#X = log(z)
+#
 KKT_fun<- function(beta0, beta_vec, mu)
 {
   res <- drop(y - (beta0 + X%*%beta_vec))
-  (-t(X)%*%res + rep(mu, pk))
+  mu_nonNA <- mu
+  mu_nonNA[is.na(mu)] = 0
+  (-t(X)%*%res + rep(mu_nonNA, pk))
 }
 
- 
+  K = length(pk) 
   # Setting index function #######################################################
   # starting and ending index in each group
   idx_gs <- cumsum(pk)-pk+1
@@ -75,7 +80,7 @@ KKT_fun<- function(beta0, beta_vec, mu)
       {
         if (i == j ) next
         v0 <- -grad_vec[i]+grad_vec[j]
-        if (v0 > v) 
+        if (v0 > v)
         {
           v <- v0
           j1 <- i
@@ -84,6 +89,12 @@ KKT_fun<- function(beta0, beta_vec, mu)
       }
     }
   }
+
+  # C code 
+  # init_fit <- init_fun_C(idx_gs, idx_ge, grad_vec)
+  # v <- init_fit$v
+  # j1 <- init_fit$jvec[1]
+  # j2 <- init_fit$jvec[2]
   
   # j1 : + sign, # j2 : - sign
   beta_sign_vec[j1] <- 1
@@ -126,8 +137,8 @@ KKT_fun<- function(beta0, beta_vec, mu)
     # LOOP procudure start ---------------------------------------------------------
     iter <- iter + 1
     #cat("iter:::",iter,'\n')
-    #if (beta_sign_vec[203]!=0) break
-    
+    if (iter == max_iter) break
+
     # Finding direction start --->
     a <- sum(beta_vec_A)
     q <- i_g_A
@@ -179,10 +190,12 @@ KKT_fun<- function(beta0, beta_vec, mu)
     corr_vec <- drop(t(X)%*%dy)
     act_type <- "none"
     #(i,j) = (j,j')
+    
+    act_vec <- setdiff(1:K, act_group)
     v <- Inf
-    for(istar in 1:K)
+    for(istar in act_vec)
     { 
-      if ( istar %in% act_group) next
+      #if ( istar %in% act_group) next
       sidx <- idx_gs[istar]:idx_ge[istar]
       for (i in sidx)
       {
@@ -196,7 +209,7 @@ KKT_fun<- function(beta0, beta_vec, mu)
           if (cjj< 0 & djj < 0) break ("stop:: KKT violation error")
           if (cjj< 0 & djj > 0) v0 <- Inf
           
-          if (v0 < v) 
+          if (v0 < v & v0>tol) 
           {
             v <- v0
             j1 <- i
@@ -206,6 +219,10 @@ KKT_fun<- function(beta0, beta_vec, mu)
       }
     }
     delta[2]<- v
+    
+    
+    # C-code
+    # d2_fun_C(act_vec, idx_gs, idx_ge,grad_vec, corr_vec,rderiv,lambda,a,tol)
     
     if (v<Inf)
     {
@@ -226,6 +243,14 @@ KKT_fun<- function(beta0, beta_vec, mu)
       j2_range_max <- lambda + rderiv[1+a+1]*v - g2
       j2_range_min <- -(lambda + rderiv[1+a+1]*v) - g2
       range_diff <- abs(j1_range_min-j2_range_max)
+      
+      # j1_range_max = lambda + rderiv[1+a+1-1]*v - g1;
+      # j1_range_min = -(lambda + rderiv[1+a+1-1]*v) - g1;
+      # j2_range_max = lambda + rderiv[1+a+1-1]*v - g2;
+      # j2_range_min = -(lambda + rderiv[1+a+1-1]*v) - g2;
+      # tmp = j1_range_min- j2_range_max;
+      # range_diff = abs_j(tmp);
+      # 
       if ( range_diff  < tol )  
       {
         js1 <- j1
@@ -275,7 +300,7 @@ KKT_fun<- function(beta0, beta_vec, mu)
         v0 <- min(v1,v2)
         
         
-        if(v0<v)
+        if(v0<v & v0>tol)
         {
           v <- v0
           j1 <- j
@@ -336,9 +361,9 @@ KKT_fun<- function(beta0, beta_vec, mu)
     # check activation type
     if (which.min(delta) == 2) act_type <- "g_act"  
     if (which.min(delta) == 3) act_type <- "i_act"  
-    if (which.min(delta) == 4) act_type <- "t_act"
+    if ((which.min(delta) == 4) | lambda < tol ) act_type <- "t_act"
     
-#    cat("Type of update:", act_type, "\n")
+    cat("Type of update:", act_type, "\n")
     
     if (act_type == "g_van")
     {
@@ -386,14 +411,37 @@ KKT_fun<- function(beta0, beta_vec, mu)
       k_A <- dict_idx_k[jstar3]
       num_g_A[k_A] <- num_g_A[k_A] + 1
     }
+    
+    ## Check KKT conditions:
     check_vec <- KKT_fun(beta0,beta_vec,mu)
     cb1 <- abs(check_vec[beta_vec_A] + lambda*beta_sign_vec[beta_vec_A])
     if (max(cb1)>tol) 
     {
-      cat("KKT is violated!!\n")
+      cat("KKT  stationarity cond (active) violated!!\n")
       stop()
     }
     
+    for (k in 1:K)
+    {
+      if (k %in% act_group) next
+      sidx <- idx_gs[k]:idx_ge[k]
+      Dvec  <- check_vec[sidx]
+      Dmax <- Dvec + lambda
+      Dmin <- Dvec - lambda
+      if (max(Dmin) > min(Dmax)+ tol) 
+      {
+        cat("KKT  stationarity cond (inactive) violated!!\n")
+        stop()
+      }
+    }
+
+    beta_gsum <-unname(unlist(by(beta_vec, dict_idx_k, sum)))
+    if (any(abs(beta_gsum)>tol))
+    {
+      cat("KKT primal feasibility: violated!!\n")
+      stop()
+    }  
+
     if (act_type == "t_act")
     {
       cat("lambda is zero!\n")
@@ -412,6 +460,7 @@ KKT_fun<- function(beta0, beta_vec, mu)
   colnames(coefficients) <- c("b0", paste("b", dict_idx_k,dict_idx_j,sep="_" ))
   lambda_vec <- beta_mat[1:(rec_idx-1),1+p+1]
   # mu
+  lambda_vec
   
 # KKT_fun(beta0,beta_vec,mu)
 #   

@@ -8,11 +8,20 @@ set.seed(1)
 X.raw = matrix(rnorm(n*sum(K)), n, sum(K))
 y = rnorm(n)
 weights=NULL
-max.steps = 30
+max.steps = 171
 lam.min=0
 tol=1e-08
 trace=FALSE
 
+#
+load("test-j.rdata")
+K = pk
+p = length(pk)
+X.raw = log(z)
+max.steps = 171
+  
+
+#
   s0 <- 1e8
   y <- as.matrix(y,n,1)
   K.idx <- c()
@@ -99,7 +108,7 @@ trace=FALSE
   beta0.rec <- c()
   beta.rec <- vector("list", p)
   
-  #while(boolpath){
+  while(boolpath){
     # store path of parameters
     s.rec <- c(s.rec, s)
     
@@ -396,46 +405,46 @@ trace=FALSE
     cnt = cnt + 1
   }
   
-  ### Finally check the KKT condition
-  for(j in 1:cnt.categ){
-    j.A = idx.A[j]
-    res = Res_l2(y, beta0 + X.A %*% beta.A)
-    tmp.gcorr <- getgcorr_l2(y, t(X[[j.A]]), res)
-    Act <- A[[j.A]]
-    kktvar <- abs(-tmp.gcorr[Act] + lambda*sign[[j.A]][Act]*w.list[[j.A]][Act] + mu[j.A])
-    if(trace)
-      cat("KKT",round(kktvar,3),"\n")
-    if(any(kktvar > tol)){
-      if(trace)
-        cat("The 2nd KKT condition violated(last).\n")    
-      OUT = TRUE
-      break
-    }
-  }
-  s.rec <- c(s.rec, s)
-  if(abs(lam.rec[length(lam.rec)]-lambda)>1e-10){
-    lam.rec <- c(lam.rec, lambda)
-    for(j in 1:p){
-      beta.rec[[j]] <- cbind(beta.rec[[j]],beta[[j]])
-    }
-    beta0.rec <- c(beta0.rec, beta0)
-    mu.rec <- cbind(mu.rec, mu)
-  }
-  if(min(lam.rec)>1e-12){
-    ln <- length(lam.rec)
-    lam.rec <- c(lam.rec, 0)
-    for(j in 1:p){
-      beta.rec[[j]] <- cbind(beta.rec[[j]],beta.rec[[j]][,ln])
-    }
-    beta0.rec <- c(beta0.rec, beta0.rec[ln])
-    mu.rec <- cbind(mu.rec, mu.rec[ln])
-  }
-  
-  obj <- list(beta0.rec=beta0.rec, beta.rec=beta.rec, 
-    s=s.rec, mu=mu.rec, lambda=lam.rec, beta0=beta0, beta=beta,
-    ltype=ltype,n=n,p=p,K=K,weights=weights)
-  
-  class(obj) <- "comlasso"
-  
-  return(invisible(obj))
-}
+#   ### Finally check the KKT condition
+#   for(j in 1:cnt.categ){
+#     j.A = idx.A[j]
+#     res = Res_l2(y, beta0 + X.A %*% beta.A)
+#     tmp.gcorr <- getgcorr_l2(y, t(X[[j.A]]), res)
+#     Act <- A[[j.A]]
+#     kktvar <- abs(-tmp.gcorr[Act] + lambda*sign[[j.A]][Act]*w.list[[j.A]][Act] + mu[j.A])
+#     if(trace)
+#       cat("KKT",round(kktvar,3),"\n")
+#     if(any(kktvar > tol)){
+#       if(trace)
+#         cat("The 2nd KKT condition violated(last).\n")    
+#       OUT = TRUE
+#       break
+#     }
+#   }
+#   s.rec <- c(s.rec, s)
+#   if(abs(lam.rec[length(lam.rec)]-lambda)>1e-10){
+#     lam.rec <- c(lam.rec, lambda)
+#     for(j in 1:p){
+#       beta.rec[[j]] <- cbind(beta.rec[[j]],beta[[j]])
+#     }
+#     beta0.rec <- c(beta0.rec, beta0)
+#     mu.rec <- cbind(mu.rec, mu)
+#   }
+#   if(min(lam.rec)>1e-12){
+#     ln <- length(lam.rec)
+#     lam.rec <- c(lam.rec, 0)
+#     for(j in 1:p){
+#       beta.rec[[j]] <- cbind(beta.rec[[j]],beta.rec[[j]][,ln])
+#     }
+#     beta0.rec <- c(beta0.rec, beta0.rec[ln])
+#     mu.rec <- cbind(mu.rec, mu.rec[ln])
+#   }
+#   
+#   obj <- list(beta0.rec=beta0.rec, beta.rec=beta.rec, 
+#     s=s.rec, mu=mu.rec, lambda=lam.rec, beta0=beta0, beta=beta,
+#     ltype=ltype,n=n,p=p,K=K,weights=weights)
+#   
+#   class(obj) <- "comlasso"
+#   
+#   return(invisible(obj))
+# }

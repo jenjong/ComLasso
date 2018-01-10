@@ -1,10 +1,12 @@
 KKT_fun<- function(beta0, beta_vec, mu)
 {
   res <- drop(y - (beta0 + X%*%beta_vec))
-  (-t(X)%*%res + rep(mu, pk))
+  mu_nonNA <- mu
+  mu_nonNA[is.na(mu)] <- 0
+  (-t(X)%*%res + rep(mu_nonNA, pk))
 }
 
-comLasso <- function(X,y,pk,lam_min,tol=1e-8)
+comLasso <- function(X,y,pk,lam_min,max_iter=1e+5,tol=1e-8, KKT_check = TRUE)
 {
   n = length(y)
   K = length(pk)
@@ -101,8 +103,7 @@ comLasso <- function(X,y,pk,lam_min,tol=1e-8)
   {
     # LOOP procudure start ---------------------------------------------------------
     iter <- iter + 1
-    #cat("iter:::",iter,'\n')
-    #if (beta_sign_vec[203]!=0) break
+    if (iter == max_iter) break
     
     # Finding direction start --->
     a <- sum(beta_vec_A)
@@ -172,7 +173,7 @@ comLasso <- function(X,y,pk,lam_min,tol=1e-8)
           if (cjj< 0 & djj < 0) break ("stop:: KKT violation error")
           if (cjj< 0 & djj > 0) v0 <- Inf
           
-          if (v0 < v) 
+          if (v0 < v & v0>tol) 
           {
             v <- v0
             j1 <- i
@@ -251,7 +252,7 @@ comLasso <- function(X,y,pk,lam_min,tol=1e-8)
         v0 <- min(v1,v2)
         
         
-        if(v0<v)
+        if (v0 < v & v0>tol) 
         {
           v <- v0
           j1 <- j
@@ -312,7 +313,7 @@ comLasso <- function(X,y,pk,lam_min,tol=1e-8)
     # check activation type
     if (which.min(delta) == 2) act_type <- "g_act"  
     if (which.min(delta) == 3) act_type <- "i_act"  
-    if (which.min(delta) == 4) act_type <- "t_act"
+    if ((which.min(delta) == 4) | lambda < tol) act_type <- "t_act"
     
     #    cat("Type of update:", act_type, "\n")
     
@@ -363,14 +364,39 @@ comLasso <- function(X,y,pk,lam_min,tol=1e-8)
       num_g_A[k_A] <- num_g_A[k_A] + 1
     }
 
-    # KKT condition check
-    # stationary condition
-    check_vec <- KKT_fun(beta0,beta_vec,mu)
-    cb1 <- abs(check_vec[beta_vec_A] + lambda*beta_sign_vec[beta_vec_A])
-    if (max(cb1)>tol) 
+    if (KKT_check)
     {
-      cat("KKT is violated!!\n")
-      stop()
+      ## Check KKT conditions:
+      check_vec <- KKT_fun(beta0,beta_vec,mu)
+      cb1 <- abs(check_vec[beta_vec_A] + lambda*beta_sign_vec[beta_vec_A])
+      if (max(cb1)>tol) 
+      {
+        cat("KKT  stationarity cond (active) violated!!\n")
+        stop()
+      }
+      
+      for (k in 1:K)
+      {
+        if (k %in% act_group) next
+        sidx <- idx_gs[k]:idx_ge[k]
+        Dvec  <- check_vec[sidx]
+        Dmax <- Dvec + lambda
+        Dmin <- Dvec - lambda
+        if (max(Dmin) > min(Dmax)+ tol) 
+        {
+          cat("KKT  stationarity cond (inactive) violated!!\n")
+          cat("max(Dmin)", max(Dmin),'\n')
+          cat("min(Dmax)", min(Dmax),'\n')
+          stop()
+        }
+      }
+      
+      beta_gsum <-unname(unlist(by(beta_vec, dict_idx_k, sum)))
+      if (any(abs(beta_gsum)>tol))
+      {
+        cat("KKT primal feasibility: violated!!\n")
+        stop()
+      }  
     }
     
     if (act_type == "t_act")
