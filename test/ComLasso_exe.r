@@ -1,11 +1,11 @@
 rm(list = ls()) ; gc()
 library(Matrix)
 # Rtools is required and Path for rtools should be set.
-# library(Rcpp)
+ library(Rcpp)
 # library(inline)
 # library(RcppArmadillo)
  setwd("D:/Jeon/rcode/ComLasso/test")
-# sourceCpp('inner.cpp')
+ sourceCpp('inner.cpp')
 
 ############### comlasso
 ### Input
@@ -132,8 +132,8 @@ KKT_fun<- function(beta0, beta_vec, mu)
   rec_idx <- rec_idx + 1
   iter  <- 0
   # Initialization end -----------------------------------------------------------  
-  while(T)
-  {
+  #while(T)
+  #{
     # LOOP procudure start ---------------------------------------------------------
     iter <- iter + 1
     #cat("iter:::",iter,'\n')
@@ -219,11 +219,7 @@ KKT_fun<- function(beta0, beta_vec, mu)
       }
     }
     delta[2]<- v
-    
-    
-    # C-code
-    # d2_fun_C(act_vec, idx_gs, idx_ge,grad_vec, corr_vec,rderiv,lambda,a,tol)
-    
+
     if (v<Inf)
     {
       g1 <- grad_vec[j1] + corr_vec[j1]*v
@@ -264,7 +260,11 @@ KKT_fun<- function(beta0, beta_vec, mu)
       # mu_tmp should be equal to the following value
       # mu_tmp <- -lambda -rderiv[1+a+1]*v -grad_vec[js1] -corr_vec[js1]*v 
     }
-    ### error  
+    
+    
+    # C-code
+    # d2_fun_C(act_vec, idx_gs, idx_ge,grad_vec, corr_vec,rderiv,lambda,a,tol)
+    
     ### 2-2-b. activated individual variable in the active categorical variable
     v <- Inf
     q_istar <- 0
@@ -318,6 +318,9 @@ KKT_fun<- function(beta0, beta_vec, mu)
     }
     jstar3 <- j1
     
+    d3_fun_C(rderiv,corr_vec,grad_vec,mu,lambda,a,tol,beta_sign_vec,
+             act_group, idx_gs, idx_ge, dict_idx_k)
+    
     ### 2-3. Compute the distance needed for lambda to become 0
     if(rderiv[1+a+1]>0){
       delta[4] <- 0
@@ -328,6 +331,7 @@ KKT_fun<- function(beta0, beta_vec, mu)
     lam_final <- (lam_min-lambda)/rderiv[1+a+1]
     delta[4] = ifelse(lam_final < tol, Inf, lam_final)
     delta_f <- min(delta)
+    
     
     # Finding delta end --------------------------------------------------------->
     

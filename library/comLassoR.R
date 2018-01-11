@@ -156,10 +156,12 @@ comLasso <- function(X,y,pk,lam_min,max_iter=1e+5,tol=1e-8, KKT_check = TRUE)
     corr_vec <- drop(t(X)%*%dy)
     act_type <- "none"
     #(i,j) = (j,j')
+    
+    act_vec <- setdiff(1:K, act_group)
     v <- Inf
-    for(istar in 1:K)
+    for(istar in act_vec)
     { 
-      if ( istar %in% act_group) next
+      #if ( istar %in% act_group) next
       sidx <- idx_gs[istar]:idx_ge[istar]
       for (i in sidx)
       {

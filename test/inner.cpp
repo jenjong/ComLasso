@@ -1,4 +1,3 @@
-
 #include <RcppArmadillo.h>
 // [[Rcpp::depends(RcppArmadillo)]]
 
@@ -27,9 +26,9 @@ List init_fun_C(IntegerVector idx_gs, IntegerVector idx_ge,
   {
     istar_s = idx_gs[istar];
     istar_e = idx_ge[istar];
-    for (int i=istar_s; i < istar_e ; i++)
+    for (int i=istar_s; i <= istar_e ; i++)
     {
-      for (int j=istar_s; j < istar_e ; j++)
+      for (int j=istar_s; j <= istar_e ; j++)
       {
         if (i==j) continue;
         v0 = -grad_vec[i-1] + grad_vec[j-1];
@@ -67,9 +66,9 @@ List d2_fun_C( IntegerVector act_vec,
     istar = act_vec[i_a];
     istar_s = idx_gs[istar-1];
     istar_e = idx_ge[istar-1];
-    for (int i=istar_s; i < istar_e ; i++)
+    for (int i=istar_s; i <= istar_e ; i++)
     {
-      for (int j=istar_s; j < istar_e ; j++)
+      for (int j=istar_s; j <= istar_e ; j++)
       {
         if (i == j ) continue;
         cjj = -corr_vec[i-1]+ corr_vec[j-1] - 2*rderiv[1+a+1-1];
@@ -90,11 +89,11 @@ List d2_fun_C( IntegerVector act_vec,
   
   double g1, g2;
   int  jstar1, jstar2;
-  double j1_range_max, j1_range_min, j2_range_max, j2_range_min;
+//  double j1_range_max, j1_range_min, j2_range_max, j2_range_min;
+  double j1_range_min, j2_range_max;
   double range_diff;
-  int js1,js2;
+  int js2;
   double mu_tmp = NA_REAL;
-  double tmp;
   if (v<R_PosInf)
   {
     g1 = grad_vec[j1-1] + corr_vec[j1-1]*v;
@@ -109,31 +108,131 @@ List d2_fun_C( IntegerVector act_vec,
       jstar1 = j2;
     }
     
-    j1_range_max = lambda + rderiv[1+a+1-1]*v - g1;
+//    j1_range_max = lambda + rderiv[1+a+1-1]*v - g1;
     j1_range_min = -(lambda + rderiv[1+a+1-1]*v) - g1;
     j2_range_max = lambda + rderiv[1+a+1-1]*v - g2;
-    j2_range_min = -(lambda + rderiv[1+a+1-1]*v) - g2;
+//    j2_range_min = -(lambda + rderiv[1+a+1-1]*v) - g2;
     range_diff = abs(j1_range_min- j2_range_max);
     
     if ( range_diff  < tol )  
     {
-        js1 = j1;
         js2 = j2;
     } else {
-        js1 = j2;
         js2 = j1;
     }
     result[0] = jstar1;
     result[1] = jstar2;
 // mu_tmp is computed
     mu_tmp = lambda + rderiv[1+a+1-1]*v -grad_vec[js2-1]-corr_vec[js2-1]*v;
-// mu_tmp should be equal to the following value
-// mu_tmp <- -lambda -rderiv[1+a+1]*v -grad_vec[js1] -corr_vec[js1]*v 
   }
   return(List::create(Named("v")= v, Named("jvec") = result,
                       Named("mu")= mu_tmp));
 }
 
+// [[Rcpp::export]]
+
+List d3_fun_C(NumericVector rderiv,
+              NumericVector corr_vec,
+              NumericVector grad_vec,
+              NumericVector mu,
+              double lambda,
+              int a,
+              double tol,
+              IntegerVector beta_sign_vec,
+              IntegerVector act_group, 
+              IntegerVector idx_gs, IntegerVector idx_ge, 
+              IntegerVector dict_idx_k)
+{
+  double v = R_PosInf;
+  double v1, v2, v0;
+  int istar;
+  int j1;
+  int q_istar  = 0;
+  int q_istar1 = 0;
+  int act_sign = 0;
+  int act_group_length = act_group.size();
+  int istar_s, istar_e;
+  double cj1, dj1, cj2, dj2;
+
+  for (int i_a = 0 ; i_a < act_group_length; i_a ++)
+  {
+    istar = act_group[i_a];
+    q_istar ++;
+    istar_s = idx_gs[istar-1];
+    istar_e = idx_ge[istar-1];
+    for (int j=istar_s; j <= istar_e ; j++)
+    {
+      if (beta_sign_vec[j-1]!=0) continue;
+      cj1 = corr_vec[j-1] - rderiv[1+a+1-1] + rderiv[1+a+1+q_istar-1];
+      dj1 = -grad_vec[j-1] + lambda - mu[istar-1];
+      v1 = dj1/cj1;
+      
+      if ((cj1>=0) & (dj1 < 0)) 
+      {
+        printf("stop:: KKT violation error \n");
+        break; 
+      }
+      if ((cj1< 0) & (dj1 < -tol))
+      {
+        printf("stop:: KKT violation error \n");
+        break; 
+      }
+      if ((cj1< 0) & (dj1 > 0)) v1 = R_PosInf;
+      
+      cj2 = -corr_vec[j-1] -rderiv[1+a+1-1]- rderiv[1+a+1+q_istar-1];
+      dj2 = grad_vec[j-1] + lambda + mu[istar-1];
+      v2 = dj2/cj2;
+
+      if ((cj2>=0) & (dj2 < 0))
+      {
+        printf("stop:: KKT violation error");
+        break; 
+      } 
+      
+      if ((cj2< 0) & (dj2 < -tol))
+      {
+        printf("stop:: KKT violation error");
+        break;
+      } 
+      
+      if ((cj2< 0) & (dj2 > 0)) v2 = R_PosInf;
+      
+      if (v1<v2)  
+      {
+        v0 = v1;
+      } else {
+        v0 = v2;
+      }
+
+      if((v0<v) & (v0>tol))
+      {
+        v = v0;
+        j1 = j;
+        q_istar1 = q_istar;
+      }
+    }
+  }
+  
+  double tmp;
+  int vi;
+  if (v < R_PosInf)  
+  {
+    vi = dict_idx_k[j1-1];
+    tmp =  grad_vec[j1-1] + corr_vec[j1-1]*v + mu[vi-1] + 
+      rderiv[1+a+1+q_istar1-1]*v;
+    if (tmp<0) 
+    {
+      act_sign = 1; 
+    } else {
+      act_sign = -1; 
+    }
+  }
+  int jstar3 = j1;
+  return(List::create(Named("v")= v, Named("act_sign") = act_sign,
+                      Named("jstar3")= jstar3));
+}
+
+      
     
 // [[Rcpp::export]]
 arma::mat Res_l2_C (arma::mat y, arma::mat fx) 
