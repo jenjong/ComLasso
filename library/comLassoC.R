@@ -143,6 +143,8 @@ comLassoC <- function(X,y,pk,lam_min,max_iter=1e+5,tol=1e-8, KKT_check = TRUE)
     ### 2-2-b. activated individual variable in the active categorical variable
     d3_fit = d3_fun_C(rderiv,corr_vec,grad_vec,mu,lambda,a,tol,beta_sign_vec,
                       act_group, idx_gs, idx_ge, dict_idx_k)
+    
+    if (d3_fit$v < 0) break
     delta[3] <- d3_fit$v
     ### 2-3. Compute the distance needed for lambda to become 0
     if(rderiv[1+a+1]>0){
@@ -242,7 +244,6 @@ comLassoC <- function(X,y,pk,lam_min,max_iter=1e+5,tol=1e-8, KKT_check = TRUE)
     if (KKT_check)
     {
       ## Check KKT conditions:
-      check_vec <- KKT_fun(beta0,beta_vec,mu)
       check_vec <- KKT_fun(X,y, beta0,beta_vec,mu)
       cb1 <- abs(check_vec[beta_vec_A] + lambda*beta_sign_vec[beta_vec_A])
       if (max(cb1)>tol) 
