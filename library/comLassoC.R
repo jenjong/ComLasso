@@ -1,4 +1,4 @@
-KKT_fun<- function(beta0, beta_vec, mu)
+KKT_fun<- function(X,y,beta0, beta_vec, mu)
 {
   res <- drop(y - (beta0 + X%*%beta_vec))
   mu_nonNA <- mu
@@ -243,12 +243,24 @@ comLassoC <- function(X,y,pk,lam_min,max_iter=1e+5,tol=1e-8, KKT_check = TRUE)
     {
       ## Check KKT conditions:
       check_vec <- KKT_fun(beta0,beta_vec,mu)
+      check_vec <- KKT_fun(X,y, beta0,beta_vec,mu)
       cb1 <- abs(check_vec[beta_vec_A] + lambda*beta_sign_vec[beta_vec_A])
       if (max(cb1)>tol) 
       {
         cat("KKT  stationarity cond (active) violated!!\n")
         stop()
       }
+      
+      tmp_idx <- which ( (dict_idx_k%in%act_group) & beta_sign_vec == 0 ) 
+      if (length(tmp_idx)>0)
+      {
+        if ( max(abs(check_vec[tmp_idx])) > (lambda + tol ) ) 
+        {
+          cat("KKT  stationarity cond (inactive) violated!!\n")
+          stop()
+        }
+      }
+      
       
       for (k in 1:K)
       {

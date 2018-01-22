@@ -2,16 +2,17 @@
 // [[Rcpp::depends(RcppArmadillo)]]
 
 using namespace Rcpp;
+
 // [[Rcpp::export]]
-double abs_j(double a)
+int sumLL (LogicalVector x)
 {
-  if (a>0) 
-  {
-    return(a); 
-  } else {
-    return(-a);  
-  }
+  
+  int v = std::accumulate(x.begin(), x.end(), 0);
+  return(v);
 }
+//List tmp(LogicalVector beta_vec_A, int i_g_A,         NumericMatrix X, NumericVector X_sum,      int K, int p, )
+
+
 // [[Rcpp::export]]
 List init_fun_C(IntegerVector idx_gs, IntegerVector idx_ge,
                        NumericVector grad_vec)
@@ -232,7 +233,14 @@ List d3_fun_C(NumericVector rderiv,
                       Named("jstar3")= jstar3));
 }
 
-      
+// [[Rcpp::export]]
+NumericVector solve_C (arma::mat Dmat, arma::vec bvec) 
+{
+  arma::vec z = solve(Dmat, bvec);
+  NumericVector v = wrap(z);
+  return(v);
+}
+
     
 // [[Rcpp::export]]
 arma::mat Res_l2_C (arma::mat y, arma::mat fx) 

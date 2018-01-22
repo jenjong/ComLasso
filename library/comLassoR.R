@@ -1,4 +1,4 @@
-KKT_fun<- function(beta0, beta_vec, mu)
+KKT_fun<- function(X,y, beta0, beta_vec, mu)
 {
   res <- drop(y - (beta0 + X%*%beta_vec))
   mu_nonNA <- mu
@@ -171,8 +171,8 @@ comLasso <- function(X,y,pk,lam_min,max_iter=1e+5,tol=1e-8, KKT_check = TRUE)
           cjj <- -corr_vec[i]+ corr_vec[j] - 2*rderiv[1+a+1]
           djj <- 2*lambda + grad_vec[i] - grad_vec[j]
           v0 <- djj/cjj
-          if (cjj>=0 & djj < 0) break ("stop:: KKT violation error")
-          if (cjj< 0 & djj < 0) break ("stop:: KKT violation error")
+          if (cjj>=0 & djj < 0) break ("stop:: KKT violation error 1\n")
+          if (cjj< 0 & djj < 0) break ("stop:: KKT violation error 2\n")
           if (cjj< 0 & djj > 0) v0 <- Inf
           
           if (v0 < v & v0>tol) 
@@ -226,7 +226,7 @@ comLasso <- function(X,y,pk,lam_min,max_iter=1e+5,tol=1e-8, KKT_check = TRUE)
     act_sign <- 0
     tmp_sign <- 0
     j1 <- NA
-    # load.image("test.R)  
+    
     for(istar in act_group)
     { 
       q_istar = q_istar + 1
@@ -240,21 +240,57 @@ comLasso <- function(X,y,pk,lam_min,max_iter=1e+5,tol=1e-8, KKT_check = TRUE)
         dj1 <- -grad_vec[j] + lambda - mu[istar]
         
         v1 <- dj1/cj1
-        if (cj1>=0 & dj1 < 0) break ("stop:: KKT violation error")
-        if (cj1< 0 & dj1 < -tol) break ("stop:: KKT violation error")
+        if (cj1>0 & dj1 < 0) 
+        {
+          if (v1 < -tol) 
+          {
+            stop ("stop:: KKT violation error 3\n") 
+          } else {
+            next
+          }
+          
+        }
+        if (cj1< 0 & dj1 < 0) 
+        {
+          if ( v1 > tol ) 
+          {
+            stop ("stop:: KKT violation error 4\n")
+          } else {
+            v1 <- Inf
+          }
+        }
+        
         if (cj1< 0 & dj1 > 0) v1 <- Inf
         
         cj2 <- -corr_vec[j] -rderiv[1+a+1]- rderiv[1+a+1+q_istar]
         dj2 <- grad_vec[j] + lambda + mu[istar]
         v2 <- dj2/cj2
-        if (cj2>=0 & dj2 < 0) break ("stop:: KKT violation error")
-        if (cj2< 0 & dj2 < -tol) break ("stop:: KKT violation error")
+        if (cj2>=0 & dj2 < 0) 
+        {
+          if (v2 < -tol) 
+          {
+            stop ("stop:: KKT violation error 5\n")
+          } else {
+            next
+          }
+        }
+        
+        if (cj2< 0 & dj2 < 0) 
+        {
+          if (v2>tol) 
+          {
+            stop ("stop:: KKT violation error 6\n")
+          } else {
+            v2 <- Inf
+          }
+        }  
+        
         if (cj2< 0 & dj2 > 0) v2 <- Inf
         
         v0 <- min(v1,v2)
         
         
-        if (v0 < v & v0>tol) 
+        if(v0<v)
         {
           v <- v0
           j1 <- j
@@ -262,6 +298,8 @@ comLasso <- function(X,y,pk,lam_min,max_iter=1e+5,tol=1e-8, KKT_check = TRUE)
         }
       }  
     }
+    
+    if (v < 0) break
     
     delta[3]<- v
     if ( v< Inf)
@@ -369,12 +407,22 @@ comLasso <- function(X,y,pk,lam_min,max_iter=1e+5,tol=1e-8, KKT_check = TRUE)
     if (KKT_check)
     {
       ## Check KKT conditions:
-      check_vec <- KKT_fun(beta0,beta_vec,mu)
+      check_vec <- KKT_fun(X,y, beta0,beta_vec,mu)
       cb1 <- abs(check_vec[beta_vec_A] + lambda*beta_sign_vec[beta_vec_A])
       if (max(cb1)>tol) 
       {
         cat("KKT  stationarity cond (active) violated!!\n")
         stop()
+      }
+      
+      tmp_idx <- which ( (dict_idx_k%in%act_group) & beta_sign_vec == 0 ) 
+      if (length(tmp_idx)>0)
+      {
+        if ( max(abs(check_vec[tmp_idx])) > (lambda + tol ) ) 
+        {
+          cat("KKT  stationarity cond (inactive) violated!!\n")
+          stop()
+        }
       }
       
       for (k in 1:K)

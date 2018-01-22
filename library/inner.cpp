@@ -1,17 +1,6 @@
 #include <RcppArmadillo.h>
 // [[Rcpp::depends(RcppArmadillo)]]
-
 using namespace Rcpp;
-// [[Rcpp::export]]
-double abs_j(double a)
-{
-  if (a>0) 
-  {
-    return(a); 
-  } else {
-    return(-a);  
-  }
-}
 // [[Rcpp::export]]
 List init_fun_C(IntegerVector idx_gs, IntegerVector idx_ge,
                        NumericVector grad_vec)
@@ -169,14 +158,27 @@ List d3_fun_C(NumericVector rderiv,
       
       if ((cj1>=0) & (dj1 < 0)) 
       {
-        printf("stop:: KKT violation error \n");
-        break; 
+        if (v1 < (-tol))
+        {
+          printf("stop:: KKT violation error 3\n");
+          break; 
+        } else {
+          continue;
+        }
       }
-      if ((cj1< 0) & (dj1 < -tol))
+      
+      
+      if ((cj1< 0) & (dj1 < 0))
       {
-        printf("stop:: KKT violation error \n");
-        break; 
+        if ( v1 > tol ) 
+        {
+          printf("stop:: KKT violation error 4\n");
+          break;
+        } else {
+          v1 = R_PosInf;
+        }
       }
+      
       if ((cj1< 0) & (dj1 > 0)) v1 = R_PosInf;
       
       cj2 = -corr_vec[j-1] -rderiv[1+a+1-1]- rderiv[1+a+1+q_istar-1];
@@ -185,14 +187,24 @@ List d3_fun_C(NumericVector rderiv,
 
       if ((cj2>=0) & (dj2 < 0))
       {
-        printf("stop:: KKT violation error");
-        break; 
+        if (v2 < (-tol))
+        {
+          printf("stop:: KKT violation error 5\n");
+          break; 
+        } else {
+          continue;
+        }
       } 
       
-      if ((cj2< 0) & (dj2 < -tol))
+      if ((cj2< 0) & (dj2 < 0))
       {
-        printf("stop:: KKT violation error");
-        break;
+        if ( v2 > tol ) 
+        {
+          printf("stop:: KKT violation error 6\n");
+          break;
+        } else {
+          v2 = R_PosInf;
+        }
       } 
       
       if ((cj2< 0) & (dj2 > 0)) v2 = R_PosInf;
@@ -204,7 +216,7 @@ List d3_fun_C(NumericVector rderiv,
         v0 = v2;
       }
 
-      if((v0<v) & (v0>tol))
+      if( v0<v )
       {
         v = v0;
         j1 = j;
@@ -230,19 +242,4 @@ List d3_fun_C(NumericVector rderiv,
   int jstar3 = j1;
   return(List::create(Named("v")= v, Named("act_sign") = act_sign,
                       Named("jstar3")= jstar3));
-}
-
-      
-    
-// [[Rcpp::export]]
-arma::mat Res_l2_C (arma::mat y, arma::mat fx) 
-{
-  arma::mat z = y-fx;
-  return(z);
-}
-// [[Rcpp::export]]
-arma::mat d_getgcorr_l2  (arma::mat tX, arma::mat d_fx)
-{
-  arma::mat z = tX*d_fx;
-  return(z);
 }

@@ -2,10 +2,11 @@ rm(list = ls()) ; gc()
 library(Matrix)
 # Rtools is required and Path for rtools should be set.
  library(Rcpp)
-# library(inline)
-# library(RcppArmadillo)
+ library(inline)
+ library(RcppArmadillo)
+library(Rglpk); library("MethylCapSig")
  setwd("D:/Jeon/rcode/ComLasso/test")
- sourceCpp('inner.cpp')
+# sourceCpp('inner.cpp')
 
 ############### comlasso
 ### Input
@@ -16,29 +17,72 @@ library(Matrix)
 # s0 = when s0 == sum(abs(beta)), stop
 
 #rm( list = ls())
- n = 100
- pk = rep(c(3,3,4),5000)
- p = sum(pk)
- set.seed(3)
- X = matrix(rnorm(n*p), n, p)
- y = rnorm(n)
+ # n = 100
+ # pk = rep(c(3,3,4),5000)
+ # p = sum(pk)
+ # set.seed(3)
+ # X = matrix(rnorm(n*p), n, p)
+ # y = rnorm(n)
  lam_min=0
  tol=1e-08
- max_iter = 1e5
- KKT_check = FALSE
-#
-#load("test-j.rdata")
-#X = log(z)
-#
-KKT_fun<- function(beta0, beta_vec, mu)
+ max_iter = 1000
+ KKT_check = TRUE
+
+KKT_fun<- function(X,y, beta0, beta_vec, mu)
 {
   res <- drop(y - (beta0 + X%*%beta_vec))
   mu_nonNA <- mu
   mu_nonNA[is.na(mu)] = 0
   (-t(X)%*%res + rep(mu_nonNA, pk))
 }
+################################################################################
 
-  K = length(pk) 
+ns <- c(50,100,200)
+ps <- c(6,11,21,51,101,201)
+parset <- matrix(0,length(ns)*length(ps),2)
+parset2 <- parset
+runtime.list <- vector(mode="list",length=nrow(parset))
+cnt <- 0
+for(ii in 1:length(ns)){
+  for(jj in 1:length(ps)){
+    cnt <- cnt+1
+    parset[cnt,] <- c(ns[ii],ps[jj])
+  }
+}
+Rnum <- 20
+ll <- 1
+#for(ll in 1:nrow(parset)){
+  cat(ll,"th learning!!!\n")
+  n <- parset[ll,1] ; nk <- parset[ll,2]
+  
+  pk <- c(5,5,rep(c(3,3,4),nk-2))
+  idx_gs <- cumsum(pk)-pk+1
+  idx_ge <- cumsum(pk)   
+  
+  p <- sum(pk); parset2[ll,1] <-n; parset2[ll,2] <-p
+  
+  sigma <- 0.2^(abs(outer(1:p,1:p,"-")))
+  diag(sigma) <- 1
+  mm<-rep(0,p);mm[1:5]<-p/2;mm[6:p]<-1
+  
+  runtime<-matrix(0,Rnum,3); colnames(runtime) <-c("genlasso","comlasso_old","comlasso_new") 
+  
+#  for(r in 1:Rnum){
+    r = 2
+    cat("r is", r, '\n')
+    set.seed(r)
+    w <- mvlognormal(n=n,Mu=mm,Sigma=rep(1,p),R=sigma);
+    z <- diag(1/rowSums(w)) %*% w
+    
+    b <- rep(0,p)
+    b[1:5] <- c(1,-0.8,0.4,0,-0.6)
+    b[6:10] <- c(-1.5,0,1.2,0,0.3)
+    #sum(b)
+    y <- drop(z %*% b)+rnorm(n,0,0.5^2)
+    X <- log(z)
+    K = length(pk) 
+    
+    
   # Setting index function #######################################################
   # starting and ending index in each group
   idx_gs <- cumsum(pk)-pk+1
@@ -132,13 +176,13 @@ KKT_fun<- function(beta0, beta_vec, mu)
   beta_mat[rec_idx, 1+p+1+act_group] <- mu[act_group]
   rec_idx <- rec_idx + 1
   iter  <- 0
-  # Initialization end -----------------------------------------------------------  
+# Initialization end -----------------------------------------------------------  
   while(T)
   {
     # LOOP procudure start ---------------------------------------------------------
     iter <- iter + 1
     #cat("iter:::",iter,'\n')
-    if (iter == max_iter) break
+
 
     # Finding direction start --->
     a <- sum(beta_vec_A)
@@ -176,7 +220,7 @@ KKT_fun<- function(beta0, beta_vec, mu)
     Dmat[1+1+a+q , 1:a+1] <- sign_vec
     
     rderiv <- solve(Dmat,bvec)
-    
+    #solve_C(Dmat,bvec)
     # Finding direction end ---------------------------------------------------->
     
     # Finding delta start ------------------------------------------------------>
@@ -206,8 +250,8 @@ KKT_fun<- function(beta0, beta_vec, mu)
           cjj <- -corr_vec[i]+ corr_vec[j] - 2*rderiv[1+a+1]
           djj <- 2*lambda + grad_vec[i] - grad_vec[j]
           v0 <- djj/cjj
-          if (cjj>=0 & djj < 0) break ("stop:: KKT violation error")
-          if (cjj< 0 & djj < 0) break ("stop:: KKT violation error")
+          if (cjj>=0 & djj < 0) break ("stop:: KKT violation error 1\n")
+          if (cjj< 0 & djj < 0) break ("stop:: KKT violation error 2\n")
           if (cjj< 0 & djj > 0) v0 <- Inf
           
           if (v0 < v & v0>tol) 
@@ -273,7 +317,7 @@ KKT_fun<- function(beta0, beta_vec, mu)
     act_sign <- 0
     tmp_sign <- 0
     j1 <- NA
-    # load.image("test.R)  
+    # load.image("test2-2.R)  
     for(istar in act_group)
     { 
       q_istar = q_istar + 1
@@ -287,21 +331,57 @@ KKT_fun<- function(beta0, beta_vec, mu)
         dj1 <- -grad_vec[j] + lambda - mu[istar]
         
         v1 <- dj1/cj1
-        if (cj1>=0 & dj1 < 0) break ("stop:: KKT violation error")
-        if (cj1< 0 & dj1 < -tol) break ("stop:: KKT violation error")
+        if (cj1>0 & dj1 < 0) 
+        {
+          if (v1 < -tol) 
+          {
+            stop ("stop:: KKT violation error 3\n") 
+          } else {
+            next
+          }
+          
+        }
+        if (cj1< 0 & dj1 < 0) 
+        {
+          if ( v1 > tol ) 
+          {
+            stop ("stop:: KKT violation error 4\n")
+          } else {
+            v1 <- Inf
+          }
+        }
+        
         if (cj1< 0 & dj1 > 0) v1 <- Inf
         
         cj2 <- -corr_vec[j] -rderiv[1+a+1]- rderiv[1+a+1+q_istar]
         dj2 <- grad_vec[j] + lambda + mu[istar]
         v2 <- dj2/cj2
-        if (cj2>=0 & dj2 < 0) break ("stop:: KKT violation error")
-        if (cj2< 0 & dj2 < -tol) break ("stop:: KKT violation error")
+        if (cj2>=0 & dj2 < 0) 
+        {
+          if (v2 < -tol) 
+          {
+            stop ("stop:: KKT violation error 5\n")
+          } else {
+            next
+          }
+        }
+          
+        if (cj2< 0 & dj2 < 0) 
+        {
+          if (v2>tol) 
+          {
+            stop ("stop:: KKT violation error 6\n")
+          } else {
+            v2 <- Inf
+          }
+        }  
+          
         if (cj2< 0 & dj2 > 0) v2 <- Inf
         
         v0 <- min(v1,v2)
         
         
-        if(v0<v & v0>tol)
+        if(v0<v)
         {
           v <- v0
           j1 <- j
@@ -309,6 +389,8 @@ KKT_fun<- function(beta0, beta_vec, mu)
         }
       }  
     }
+
+    if (v < 0) break
     
     delta[3]<- v
     if ( v< Inf)
@@ -319,8 +401,8 @@ KKT_fun<- function(beta0, beta_vec, mu)
     }
     jstar3 <- j1
     
-    d3_fun_C(rderiv,corr_vec,grad_vec,mu,lambda,a,tol,beta_sign_vec,
-             act_group, idx_gs, idx_ge, dict_idx_k)
+    #d3_fun_C(rderiv,corr_vec,grad_vec,mu,lambda,a,tol,beta_sign_vec,
+    #         act_group, idx_gs, idx_ge, dict_idx_k)
     
     ### 2-3. Compute the distance needed for lambda to become 0
     if(rderiv[1+a+1]>0){
@@ -332,8 +414,8 @@ KKT_fun<- function(beta0, beta_vec, mu)
     lam_final <- (lam_min-lambda)/rderiv[1+a+1]
     delta[4] = ifelse(lam_final < tol, Inf, lam_final)
     delta_f <- min(delta)
-    
-    
+#if (iter == max_iter) break   
+    #delta_f = 0.0001
     # Finding delta end --------------------------------------------------------->
     
     # update variable star ------------------------------------------------------>
@@ -420,12 +502,22 @@ KKT_fun<- function(beta0, beta_vec, mu)
     ## Check KKT conditions:
     if (KKT_check)
     {
-      check_vec <- KKT_fun(beta0,beta_vec,mu)
+      check_vec <- KKT_fun(X,y, beta0,beta_vec,mu)
       cb1 <- abs(check_vec[beta_vec_A] + lambda*beta_sign_vec[beta_vec_A])
       if (max(cb1)>tol) 
       {
         cat("KKT  stationarity cond (active) violated!!\n")
         stop()
+      }
+      
+      tmp_idx <- which ( (dict_idx_k%in%act_group) & beta_sign_vec == 0 ) 
+      if (length(tmp_idx)>0)
+      {
+        if ( max(abs(check_vec[tmp_idx])) > (lambda + tol ) ) 
+        {
+          cat("KKT  stationarity cond (inactive) violated!!\n")
+          stop()
+        }
       }
       
       for (k in 1:K)
@@ -437,7 +529,7 @@ KKT_fun<- function(beta0, beta_vec, mu)
         Dmin <- Dvec - lambda
         if (max(Dmin) > min(Dmax)+ tol) 
         {
-          cat("KKT  stationarity cond (inactive) violated!!\n")
+          cat("KKT  stationarity cond (inactive group) violated!!\n")
           stop()
         }
       }
@@ -459,11 +551,9 @@ KKT_fun<- function(beta0, beta_vec, mu)
     
     # KKT condition check
     # stationary condition
-    
-    
-    
     # LOOP procudure end ---------------------------------------------------------
   }  
+  
   coefficients <- beta_mat[1:(rec_idx-1),1:(p+1)]
   colnames(coefficients) <- c("b0", paste("b", dict_idx_k,dict_idx_j,sep="_" ))
   lambda_vec <- beta_mat[1:(rec_idx-1),1+p+1]
