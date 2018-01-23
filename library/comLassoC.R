@@ -175,6 +175,11 @@ comLassoC <- function(X,y,pk,lam_min,max_iter=1e+5,tol=1e-8, KKT_check = TRUE)
     beta_mat[rec_idx, 1+p+1] <- lambda
     beta_mat[rec_idx, 1+p+1+act_group] <- mu[act_group]
     rec_idx <- rec_idx + 1
+    
+    # check degree of freedom
+    if ( n <= sum(beta_vec_A)-length(act_group)+1) break
+    
+    
     # check vanishing type 
     if (which.min(delta) == 1) 
     {

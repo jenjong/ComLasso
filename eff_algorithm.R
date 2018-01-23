@@ -21,8 +21,8 @@ for(ii in 1:length(ns)){
   }
 }
 Rnum <- 20
-
-for(ll in 1:nrow(parset)){
+ll = 9
+for(ll in 12:nrow(parset)){
   cat(ll,"th learning!!!\n")
   n <- parset[ll,1] ; nk <- parset[ll,2]
   
@@ -47,30 +47,31 @@ for(ll in 1:nrow(parset)){
     b[6:10] <- c(-1.5,0,1.2,0,0.3)
     #sum(b)
     y <- drop(z %*% b)+rnorm(n,0,0.5^2)
-    # # reparametrization for genlasso
-    # X = log(z)
-    # Cm <- diag(1,p)
-    # for (i in 1:length(pk))
-    # {
-    #   sidx = idx_gs[i]:idx_ge[i]
-    #   for (j in sidx) X[,j] = X[,j] - X[,idx_ge[i]]
-    #   Cm[idx_ge[i],sidx] <- 1
-    # }
-    # X <- X[,-(idx_ge)]
-    # Cm <- Cm[,-(idx_ge)]
-    # 
-    # for(qq in 1:(nk)){
-    #   Cm[qq,(idx_gs[qq]:idx_ge[qq])] <- 1
-    # }
-    # 
-    # runtime[r,1]<-system.time(gfun<-genlasso(y=y,X=X,D=Cm,approx=FALSE,maxsteps=2000,minlam=0,
-    #                                          rtol=1e-07,btol=1e-07,eps=1e-4,verbose=FALSE,svd=FALSE)
-    # )[3]
-    # #elam <- quantile(gfun$lambda,0.25)
+    
+    # reparametrization for genlasso
+    rX = X = log(z)
+    Cm <- diag(1,p)
+    for (i in 1:length(pk))
+    {
+      sidx = idx_gs[i]:idx_ge[i]
+      for (j in sidx) rX[,j] = rX[,j] - rX[,idx_ge[i]]
+      Cm[idx_ge[i],sidx] <- 1
+    }
+    rX <- rX[,-(idx_ge)]
+    Cm <- Cm[,-(idx_ge)]
 
-#    runtime[r,2] <- system.time(cfun2 <- comLasso(log(z),y,pk=pk,lam_min=0,tol=1e-08,KKT_check=FALSE) # Prof. Jeon
-#    )[3]
-    runtime[r,3] <- system.time(cfun2 <- comLassoC(log(z),y,pk=pk,lam_min=0,tol=1e-08,KKT_check=FALSE) # Prof. Jeon
+    for(qq in 1:(nk)){
+      Cm[qq,(idx_gs[qq]:idx_ge[qq])] <- 1
+    }
+
+    runtime[r,1]<-system.time(gfun<-genlasso(y=y,X=rX,D=Cm,approx=FALSE,maxsteps=2000,minlam=0,
+                                             rtol=1e-07,btol=1e-07,eps=1e-4,verbose=FALSE,svd=FALSE)
+    )[3]
+
+    runtime[r,2] <- system.time(cfun1<-comlasso_l2(n=n,p=length(pk),K=pk,X.raw=X,y=y,max.steps=1e5,lam.min=0,tol=1e-08)
+    )[3]
+
+    runtime[r,3] <- system.time(cfun2 <- comLassoC(X,y,pk=pk,lam_min=0,tol=1e-08,KKT_check=FALSE) # Prof. Jeon
     )[3]
     cat(runtime[r,],"\n")
   }

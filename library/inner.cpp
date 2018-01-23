@@ -64,8 +64,9 @@ List d2_fun_C( IntegerVector act_vec,
         djj = 2*lambda + grad_vec[i-1] - grad_vec[j-1];
         v0 = djj/cjj;
         if ( (cjj>=0)&(djj<0)) break;
-        if ((cjj<0)&(djj<0)) break;
+        //if ((cjj<0)&(djj<0)) break;
         if ((cjj<0)&(djj>0)) v0 = R_PosInf;
+        if (v0 < tol) continue;
         if (v0 < v) 
         {
           v = v0;
@@ -161,6 +162,7 @@ List d3_fun_C(NumericVector rderiv,
         if (v1 < (-tol))
         {
           printf("stop:: KKT violation error 3\n");
+          printf("v is %f\n", v1);
           break; 
         } else {
           continue;
@@ -173,6 +175,7 @@ List d3_fun_C(NumericVector rderiv,
         if ( v1 > tol ) 
         {
           printf("stop:: KKT violation error 4\n");
+          printf("v is %f\n", v1);
           break;
         } else {
           v1 = R_PosInf;
@@ -190,6 +193,7 @@ List d3_fun_C(NumericVector rderiv,
         if (v2 < (-tol))
         {
           printf("stop:: KKT violation error 5\n");
+          printf("v is %f\n", v2);
           break; 
         } else {
           continue;
@@ -201,6 +205,7 @@ List d3_fun_C(NumericVector rderiv,
         if ( v2 > tol ) 
         {
           printf("stop:: KKT violation error 6\n");
+          printf("v is %f\n", v2);
           break;
         } else {
           v2 = R_PosInf;

@@ -28,7 +28,7 @@ library(Rglpk); library("MethylCapSig")
  max_iter = 1000
  KKT_check = TRUE
 
-KKT_fun<- function(X,y, beta0, beta_vec, mu)
+KKT_fun<- function(X,y, beta0, beta_vec, mu, pk)
 {
   res <- drop(y - (beta0 + X%*%beta_vec))
   mu_nonNA <- mu
@@ -50,7 +50,7 @@ for(ii in 1:length(ns)){
   }
 }
 Rnum <- 20
-ll <- 1
+ll <- 12
 #for(ll in 1:nrow(parset)){
   cat(ll,"th learning!!!\n")
   n <- parset[ll,1] ; nk <- parset[ll,2]
@@ -236,6 +236,7 @@ ll <- 1
     act_type <- "none"
     #(i,j) = (j,j')
     
+    #if (iter == max_iter) break   
     act_vec <- setdiff(1:K, act_group)
     v <- Inf
     for(istar in act_vec)
@@ -251,10 +252,11 @@ ll <- 1
           djj <- 2*lambda + grad_vec[i] - grad_vec[j]
           v0 <- djj/cjj
           if (cjj>=0 & djj < 0) break ("stop:: KKT violation error 1\n")
-          if (cjj< 0 & djj < 0) break ("stop:: KKT violation error 2\n")
+          #if (cjj< 0 & djj < 0) break ("stop:: KKT violation error 2\n")
           if (cjj< 0 & djj > 0) v0 <- Inf
-          
-          if (v0 < v & v0>tol) 
+          if (v0 < tol) next
+          #cat("(i,j) is (", i,"-",j, ")::", v0, "\n")
+          if (v0 < v) 
           {
             v <- v0
             j1 <- i
@@ -414,7 +416,6 @@ ll <- 1
     lam_final <- (lam_min-lambda)/rderiv[1+a+1]
     delta[4] = ifelse(lam_final < tol, Inf, lam_final)
     delta_f <- min(delta)
-#if (iter == max_iter) break   
     #delta_f = 0.0001
     # Finding delta end --------------------------------------------------------->
     
@@ -437,6 +438,10 @@ ll <- 1
     beta_mat[rec_idx, 1+p+1] <- lambda
     beta_mat[rec_idx, 1+p+1+act_group] <- mu[act_group]
     rec_idx <- rec_idx + 1
+    
+    # degree of freedom
+    if ( n <= sum(beta_vec_A)-length(act_group)+1) break
+    
     # check vanishing type 
     if (which.min(delta) == 1) 
     {
@@ -499,10 +504,12 @@ ll <- 1
       num_g_A[k_A] <- num_g_A[k_A] + 1
     }
     
+    
+    
     ## Check KKT conditions:
     if (KKT_check)
     {
-      check_vec <- KKT_fun(X,y, beta0,beta_vec,mu)
+      check_vec <- KKT_fun(X,y, beta0,beta_vec,mu,pk)
       cb1 <- abs(check_vec[beta_vec_A] + lambda*beta_sign_vec[beta_vec_A])
       if (max(cb1)>tol) 
       {

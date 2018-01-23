@@ -172,10 +172,10 @@ comLasso <- function(X,y,pk,lam_min,max_iter=1e+5,tol=1e-8, KKT_check = TRUE)
           djj <- 2*lambda + grad_vec[i] - grad_vec[j]
           v0 <- djj/cjj
           if (cjj>=0 & djj < 0) break ("stop:: KKT violation error 1\n")
-          if (cjj< 0 & djj < 0) break ("stop:: KKT violation error 2\n")
+          #if (cjj< 0 & djj < 0) break ("stop:: KKT violation error 2\n")
           if (cjj< 0 & djj > 0) v0 <- Inf
-          
-          if (v0 < v & v0>tol) 
+          if (v0 < tol) next
+          if (v0 < v) 
           {
             v <- v0
             j1 <- i
@@ -342,6 +342,10 @@ comLasso <- function(X,y,pk,lam_min,max_iter=1e+5,tol=1e-8, KKT_check = TRUE)
     beta_mat[rec_idx, 1+p+1] <- lambda
     beta_mat[rec_idx, 1+p+1+act_group] <- mu[act_group]
     rec_idx <- rec_idx + 1
+
+    # degree of freedom
+    if ( n <= sum(beta_vec_A)-length(act_group)+1) break
+    
     # check vanishing type 
     if (which.min(delta) == 1) 
     {
