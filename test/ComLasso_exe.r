@@ -324,10 +324,12 @@ ll <- 12
     { 
       q_istar = q_istar + 1
       sidx <- idx_gs[istar]:idx_ge[istar]
+      sidx = which(beta_sign_vec[sidx]==0) + idx_gs[istar] - 1
+      if (length(sidx) == 0 ) next
       #cat("q_istar:", q_istar,"\n")
       for (j in sidx)
       {
-        if (beta_sign_vec[j]!=0) next
+        #if (beta_sign_vec[j]!=0) next
         
         cj1 <- corr_vec[j] - rderiv[1+a+1] + rderiv[1+a+1+q_istar]
         dj1 <- -grad_vec[j] + lambda - mu[istar]

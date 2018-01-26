@@ -231,11 +231,12 @@ comLasso <- function(X,y,pk,lam_min,max_iter=1e+5,tol=1e-8, KKT_check = TRUE)
     { 
       q_istar = q_istar + 1
       sidx <- idx_gs[istar]:idx_ge[istar]
+#      sidx = which(beta_sign_vec[sidx]==0) + idx_gs[istar] - 1  
+#      if (length(sidx) == 0 ) next
       #cat("q_istar:", q_istar,"\n")
       for (j in sidx)
       {
         if (beta_sign_vec[j]!=0) next
-        
         cj1 <- corr_vec[j] - rderiv[1+a+1] + rderiv[1+a+1+q_istar]
         dj1 <- -grad_vec[j] + lambda - mu[istar]
         
@@ -359,7 +360,7 @@ comLasso <- function(X,y,pk,lam_min,max_iter=1e+5,tol=1e-8, KKT_check = TRUE)
     if (which.min(delta) == 3) act_type <- "i_act"  
     if ((which.min(delta) == 4) | lambda < tol) act_type <- "t_act"
     
-    #    cat("Type of update:", act_type, "\n")
+    #   cat("Type of update:", act_type, "\n")
     
     if (act_type == "g_van")
     {
@@ -455,12 +456,15 @@ comLasso <- function(X,y,pk,lam_min,max_iter=1e+5,tol=1e-8, KKT_check = TRUE)
     
     if (act_type == "t_act")
     {
-      cat("lambda is zero!\n")
+      #cat("lambda is zero!\n")
       break
     }
     # update variable end ------------------------------------------------------>
     # LOOP procudure end ---------------------------------------------------------
-  }  
+  } 
+  cat("the final df of the model is", sum(beta_vec_A)-length(act_group)+1, "\n")
+  cat("the nobs is", n, "\n")
+  cat("p is", p,  "\n")  
   coefMat <- beta_mat[1:(rec_idx-1),1:(p+1)]
   colnames(coefMat) <- c("b0", paste("b", dict_idx_k,dict_idx_j,sep="_" ))
   lambda_vec <- beta_mat[1:(rec_idx-1),1+p+1]

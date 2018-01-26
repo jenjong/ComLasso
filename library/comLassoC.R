@@ -1,3 +1,6 @@
+# Maintainer
+# 
+
 KKT_fun<- function(X,y,beta0, beta_vec, mu)
 {
   res <- drop(y - (beta0 + X%*%beta_vec))
@@ -144,7 +147,10 @@ comLassoC <- function(X,y,pk,lam_min,max_iter=1e+5,tol=1e-8, KKT_check = TRUE)
     d3_fit = d3_fun_C(rderiv,corr_vec,grad_vec,mu,lambda,a,tol,beta_sign_vec,
                       act_group, idx_gs, idx_ge, dict_idx_k)
     
-    if (d3_fit$v < 0) break
+    if (d3_fit$v < 0) 
+    {
+      break
+    }
     delta[3] <- d3_fit$v
     ### 2-3. Compute the distance needed for lambda to become 0
     if(rderiv[1+a+1]>0){
@@ -193,7 +199,7 @@ comLassoC <- function(X,y,pk,lam_min,max_iter=1e+5,tol=1e-8, KKT_check = TRUE)
     if (which.min(delta) == 3) act_type <- "i_act"  
     if ((which.min(delta) == 4) | lambda < tol) act_type <- "t_act"
     
-    # cat("Type of update:", act_type, "\n")
+     #cat("Type of update:", act_type, "\n")
     
     if (act_type == "g_van")
     {
@@ -294,12 +300,15 @@ comLassoC <- function(X,y,pk,lam_min,max_iter=1e+5,tol=1e-8, KKT_check = TRUE)
     
     if (act_type == "t_act")
     {
-      cat("lambda is zero!\n")
+      #cat("lambda is zero!\n")
       break
     }
     # update variable end ------------------------------------------------------>
     # LOOP procudure end ---------------------------------------------------------
-  }  
+  } 
+  cat("the df of the final model is", sum(beta_vec_A)-length(act_group)+1, "\n")
+  cat("the nobs is", n, "\n")
+  cat("p is", p,  "\n")  
   coefMat <- beta_mat[1:(rec_idx-1),1:(p+1)]
   colnames(coefMat) <- c("b0", paste("b", dict_idx_k,dict_idx_j,sep="_" ))
   lambda_vec <- beta_mat[1:(rec_idx-1),1+p+1]
