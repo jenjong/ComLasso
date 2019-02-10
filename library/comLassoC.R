@@ -306,9 +306,9 @@ comLassoC <- function(X,y,pk,lam_min,max_iter=1e+5,tol=1e-8, KKT_check = TRUE)
     # update variable end ------------------------------------------------------>
     # LOOP procudure end ---------------------------------------------------------
   } 
-  cat("the df of the final model is", sum(beta_vec_A)-length(act_group)+1, "\n")
-  cat("the nobs is", n, "\n")
-  cat("p is", p,  "\n")  
+#  cat("the df of the final model is", sum(beta_vec_A)-length(act_group)+1, "\n")
+#  cat("the nobs is", n, "\n")
+#  cat("p is", p,  "\n")  
   coefMat <- beta_mat[1:(rec_idx-1),1:(p+1)]
   colnames(coefMat) <- c("b0", paste("b", dict_idx_k,dict_idx_j,sep="_" ))
   lambda_vec <- beta_mat[1:(rec_idx-1),1+p+1]
