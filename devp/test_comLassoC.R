@@ -22,7 +22,7 @@ comLassoC <- function(X,y,pk,lam_min,max_iter=1e+5,tol=1e-8, KKT_check = TRUE)
   # single index ---> group index
   dict_idx_k <- rep(1:K, pk)
   # single index ---> within group index
-  dict_idx_j <- unlist(lapply(pk ,FUN = seq, from = 1, by = 1))
+  dict_idx_j <- unlist(lapply(pk, FUN = seq, from = 1, by = 1))
   
   # active group  
   i_g_A <-  0L
@@ -312,9 +312,7 @@ comLassoC <- function(X,y,pk,lam_min,max_iter=1e+5,tol=1e-8, KKT_check = TRUE)
   coefMat <- beta_mat[1:(rec_idx-1),1:(p+1)]
   colnames(coefMat) <- c("b0", paste("b", dict_idx_k,dict_idx_j,sep="_" ))
   lambda_vec <- beta_mat[1:(rec_idx-1),1+p+1]
-  mu_mat <- beta_mat[1:(rec_idx-1),(1+p+2):(1+p+1+K), drop = F]
-  return(list(coefMat = coefMat, lambda_vec = lambda_vec,
-              mu_mat = mu_mat) )
+  return(list(coefMat = coefMat, lambda_vec = lambda_vec))
 }  
   
   

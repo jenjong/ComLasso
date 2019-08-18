@@ -10,15 +10,15 @@ install_github("glmgen/genlasso")
 library(genlasso)
 sourceCpp('inner.cpp')
 source("ComLassoC.R")
-# Set parameters in table 1
-# para_vec[[1]] denotes that n = 50, p = 200
+# Set parameters in table 2
+# para_vec[[1]] denotes that n = 50, p_k = 10, K = 20
 para_vec = list()
 para_vec[[1]] <- c(50,rep(10,20))
-para_vec[[2]] <- c(50,500)
-para_vec[[3]] <- c(50,1000)
-para_vec[[4]] <- c(100,200)
-para_vec[[5]] <- c(100,500)
-para_vec[[6]] <- c(100,1000)
+para_vec[[2]] <- c(50,rep(10,50))
+para_vec[[3]] <- c(50,rep(10,100))
+para_vec[[4]] <- c(100,rep(10,20))
+para_vec[[5]] <- c(100,rep(10,50))
+para_vec[[6]] <- c(100,rep(10,100))
 runtime.list <- vector(mode="list",length=length(para_vec))
 # number of repetitions
 Rnum <- 20
@@ -29,8 +29,8 @@ ll = 1
   pk <- para_vec[[ll]][-1]
   idx_gs <- cumsum(pk)-pk+1
   idx_ge <- cumsum(pk)   
-  idx_gs_r  = idx_gs - 0:(length(pk)-1)
-  idx_ge_r  = idx_ge - 1:length(pk)
+  # idx_gs_r  = idx_gs - 0:(length(pk)-1)
+  # idx_ge_r  = idx_ge - 1:length(pk)
   
   p = sum(pk)
   B_list = list()
@@ -50,9 +50,8 @@ ll = 1
   runtime<-matrix(0,Rnum,2)
   colnames(runtime) <-c("comlasso", "genlasso") 
   r = 1
-  
-  #for(r in 1:Rnum)
-  #{
+  # for(r in 1:Rnum)
+  # {
     set.seed(r)
     w = NULL
     z = NULL
@@ -85,10 +84,9 @@ ll = 1
     Cm <- Cm[,-(idx_ge)]
     Cm <- cbind(0,Cm)
     rX <- cbind(1, rX)
-    lam_min=0;tol=1e-08;KKT_check=FALSE    
-    
+    lam_min=0;tol=1e-08;KKT_check=FALSE        
     #if (p>n) Cm <- Matrix(Cm, sparse = TRUE) 
-#     
+    
 #     runtime[r,1] <- system.time(cfun2 <- comLassoC(X,y,pk=pk,lam_min=0,
 #                                                    tol=1e-08,KKT_check=FALSE) # Prof. Jeon
 #     )[3]
@@ -106,5 +104,3 @@ ll = 1
 # lapply(runtime.list, colMeans)
 # 
 # 
-
-
