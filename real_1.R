@@ -7,7 +7,7 @@ library(Rglpk)
 library(MethylCapSig)
 install_github("glmgen/genlasso")
 library(genlasso)
-#setwd("~/github/ComLasso")
+setwd("~/github/ComLasso")
 sourceCpp('./library/inner.cpp')
 source("./library/ComLassoC.R")
 # income
@@ -63,4 +63,10 @@ for ( i in 1:8)
 }  
 
 plot(1:8,rep(0,8), col = 1:8)
+xx = melt(x1)
+colnames(xx)  = c("time", "index", "prop")
+xx$index = as.factor(xx$index)
+xx$time = as.integer(xx$time)
+ggplot(data = xx) + geom_area(aes(x = time, y= prop, fill = index, group = index))
+
 

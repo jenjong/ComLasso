@@ -116,8 +116,13 @@ for(ll in 1:length(para_vec))
   runtime.list[[ll]] <- runtime
 }
 
-lapply(runtime.list, colMeans)
 
-
+a = runtime.list 
+for (i in 1:length(runtime.list))
+{
+  a[[i]] = runtime.list[[i]][-1,]
+}
+unlist(lapply(a, colMeans))
+save.image("table1.rdata")
 
 

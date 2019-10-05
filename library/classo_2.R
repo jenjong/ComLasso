@@ -170,9 +170,9 @@ zhou <- function(X, y, penwt, Aeq, beq, Aineq, bineq){
     # calculate derivative
     tryCatch(
       expr = {
-        dir = dirsgn * solve(M, rbind(matrix(subgrad[setActive], ncol = 1), matrix(rep(0, neq + nIneqBorder), ncol = 1)))
+        dir = -(MASS::ginv(M) %*% rbind(matrix(subgrad[setActive], ncol = 1), matrix(rep(0, neq + nIneqBorder), ncol = 1)))
       }, 
-      finally = {
+      error = {
         dir = -(MASS::ginv(M) %*% rbind(matrix(subgrad[setActive], ncol = 1), matrix(rep(0, neq + nIneqBorder), ncol = 1)))
         # julia는 pinv 함수 씀
       }
@@ -244,7 +244,7 @@ zhou <- function(X, y, penwt, Aeq, beq, Aineq, bineq){
         inactiveCoeffs = which(!setActive)
         idxIneqBorder = which(setIneqBorder)
         
-        M = cbind(H[activeCoeffs, activeCoeffs], Aeq[, activeCoeffs], 
+        M = cbind(H[activeCoeffs, activeCoeffs, drop = F], t(Aeq[, activeCoeffs, drop = F]), 
                   t(Aineq[setIneqBorder, activeCoeffs]))
         M = rbind(M, matrix(rep(0, (neq + nIneqBorder) * dim(M)[2]), nrow = (neq + nIneqBorder)))
         M[(nrow(M) - neq - nIneqBorder + 1):nrow(M), 1:nActive] = rbind(Aeq[, activeCoeffs], Aineq[idxIneqBorder, activeCoeffs])
@@ -252,9 +252,9 @@ zhou <- function(X, y, penwt, Aeq, beq, Aineq, bineq){
         # calculate derivative
         tryCatch(
           expr = {
-            dir = dirsgn * solve(M, rbind(matrix(subgrad[setActive], ncol = 1), matrix(rep(0, neq + nIneqBorder), ncol = 1)))
+            dir = -(MASS::ginv(M) %*% rbind(matrix(subgrad[setActive], ncol = 1), matrix(rep(0, neq + nIneqBorder), ncol = 1)))
           }, 
-          finally = {
+          error = {
             dir = -(MASS::ginv(M) %*% rbind(matrix(subgrad[setActive], ncol = 1), matrix(rep(0, neq + nIneqBorder), ncol = 1)))
             # julia는 pinv 함수 씀
           }
@@ -262,7 +262,7 @@ zhou <- function(X, y, penwt, Aeq, beq, Aineq, bineq){
         
         # calculate the derivative for rho * subgradient
         # 여기 계산 불안정 - 제약조건이 1개만 있을 때*****
-        temp = cbind(H[inactiveCoeffs, activeCoeffs], Aeq[, inactiveCoeffs, drop=F])
+        temp = cbind(H[inactiveCoeffs, activeCoeffs, drop=F], t(Aeq[, inactiveCoeffs, drop=F]))
         if(nineq == 0) {
           dirSubgrad = - temp %*% dir
         } else {
@@ -320,7 +320,7 @@ zhou <- function(X, y, penwt, Aeq, beq, Aineq, bineq){
         inactiveCoeffs = which(!setActive)
         idxIneqBorder = which(setIneqBorder)
         
-        M = cbind(H[activeCoeffs, activeCoeffs], Aeq[, activeCoeffs], 
+        M = cbind(H[activeCoeffs, activeCoeffs, drop = F], t(Aeq[, activeCoeffs, drop = F]), 
                   t(Aineq[setIneqBorder, activeCoeffs]))
         M = rbind(M, matrix(rep(0, (neq + nIneqBorder) * dim(M)[2]), nrow = (neq + nIneqBorder)))
         M[(nrow(M) - neq - nIneqBorder + 1):nrow(M), 1:nActive] = rbind(Aeq[, activeCoeffs], Aineq[idxIneqBorder, activeCoeffs])
@@ -328,9 +328,9 @@ zhou <- function(X, y, penwt, Aeq, beq, Aineq, bineq){
         # calculate derivative
         tryCatch(
           expr = {
-            dir = dirsgn * solve(M, rbind(matrix(subgrad[setActive], ncol = 1), matrix(rep(0, neq + nIneqBorder), ncol = 1)))
+            dir = -(MASS::ginv(M) %*% rbind(matrix(subgrad[setActive], ncol = 1), matrix(rep(0, neq + nIneqBorder), ncol = 1)))
           }, 
-          finally = {
+          error = {
             dir = -(MASS::ginv(M) %*% rbind(matrix(subgrad[setActive], ncol = 1), matrix(rep(0, neq + nIneqBorder), ncol = 1)))
             # julia는 pinv 함수 씀
           }
@@ -338,7 +338,7 @@ zhou <- function(X, y, penwt, Aeq, beq, Aineq, bineq){
         
         # calculate the derivative for rho * subgradient
         # 여기 계산 불안정 - 제약조건이 1개만 있을 때*****
-        temp = cbind(H[inactiveCoeffs, activeCoeffs, drop=F], Aeq[, inactiveCoeffs, drop=F])
+        temp = cbind(H[inactiveCoeffs, activeCoeffs, drop=F], t(Aeq[, inactiveCoeffs, drop=F]))
         if(nineq == 0) {
           dirSubgrad = - temp %*% dir
         } else {
@@ -395,7 +395,7 @@ zhou <- function(X, y, penwt, Aeq, beq, Aineq, bineq){
         inactiveCoeffs = which(!setActive)
         idxIneqBorder = which(setIneqBorder)
         
-        M = cbind(H[activeCoeffs, activeCoeffs], Aeq[, activeCoeffs], 
+        M = cbind(H[activeCoeffs, activeCoeffs, drop = F], t(Aeq[, activeCoeffs, drop = F]), 
                   t(Aineq[setIneqBorder, activeCoeffs]))
         M = rbind(M, matrix(rep(0, (neq + nIneqBorder) * dim(M)[2]), nrow = (neq + nIneqBorder)))
         M[(nrow(M) - neq - nIneqBorder + 1):nrow(M), 1:nActive] = rbind(Aeq[, activeCoeffs], Aineq[idxIneqBorder, activeCoeffs])
@@ -403,9 +403,9 @@ zhou <- function(X, y, penwt, Aeq, beq, Aineq, bineq){
         # calculate derivative
         tryCatch(
           expr = {
-            dir = dirsgn * solve(M, rbind(matrix(subgrad[setActive], ncol = 1), matrix(rep(0, neq + nIneqBorder), ncol = 1)))
+            dir = -(MASS::ginv(M) %*% rbind(matrix(subgrad[setActive], ncol = 1), matrix(rep(0, neq + nIneqBorder), ncol = 1)))
           }, 
-          finally = {
+          error = {
             dir = -(MASS::ginv(M) %*% rbind(matrix(subgrad[setActive], ncol = 1), matrix(rep(0, neq + nIneqBorder), ncol = 1)))
             # julia는 pinv 함수 씀
           }
@@ -413,7 +413,7 @@ zhou <- function(X, y, penwt, Aeq, beq, Aineq, bineq){
         
         # calculate the derivative for rho * subgradient
         # 여기 계산 불안정 - 제약조건이 1개만 있을 때*****
-        temp = cbind(H[inactiveCoeffs, activeCoeffs, drop=F], Aeq[, inactiveCoeffs])
+        temp = cbind(H[inactiveCoeffs, activeCoeffs, drop=F], t(Aeq[, inactiveCoeffs, drop = F]))
         if(nineq == 0) {
           dirSubgrad = - temp %*% dir
         } else {
@@ -463,7 +463,7 @@ zhou <- function(X, y, penwt, Aeq, beq, Aineq, bineq){
         inactiveCoeffs = which(!setActive)
         idxIneqBorder = which(setIneqBorder)
         
-        M = cbind(H[activeCoeffs, activeCoeffs], Aeq[, activeCoeffs], 
+        M = cbind(H[activeCoeffs, activeCoeffs, drop = F], t(Aeq[, activeCoeffs, drop = F]), 
                   t(Aineq[setIneqBorder, activeCoeffs]))
         M = rbind(M, matrix(rep(0, (neq + nIneqBorder) * dim(M)[2]), nrow = (neq + nIneqBorder)))
         M[(nrow(M) - neq - nIneqBorder + 1):nrow(M), 1:nActive] = rbind(Aeq[, activeCoeffs], Aineq[idxIneqBorder, activeCoeffs])
@@ -471,9 +471,9 @@ zhou <- function(X, y, penwt, Aeq, beq, Aineq, bineq){
         # calculate derivative
         tryCatch(
           expr = {
-            dir = dirsgn * solve(M, rbind(matrix(subgrad[setActive], ncol = 1), matrix(rep(0, neq + nIneqBorder), ncol = 1)))
+            dir = -(MASS::ginv(M) %*% rbind(matrix(subgrad[setActive], ncol = 1), matrix(rep(0, neq + nIneqBorder), ncol = 1)))
           }, 
-          finally = {
+          error = {
             dir = -(MASS::ginv(M) %*% rbind(matrix(subgrad[setActive], ncol = 1), matrix(rep(0, neq + nIneqBorder), ncol = 1)))
             # julia는 pinv 함수 씀
           }
@@ -481,7 +481,7 @@ zhou <- function(X, y, penwt, Aeq, beq, Aineq, bineq){
         
         # calculate the derivative for rho * subgradient
         # 여기 계산 불안정 - 제약조건이 1개만 있을 때*****
-        temp = cbind(H[inactiveCoeffs, activeCoeffs, drop=F], Aeq[, inactiveCoeffs, drop=F])
+        temp = cbind(H[inactiveCoeffs, activeCoeffs, drop=F], t(Aeq[, inactiveCoeffs, drop=F]))
         if(nineq == 0) {
           dirSubgrad = - temp %*% dir
         } else {

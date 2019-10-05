@@ -18,15 +18,15 @@ source("./library/classo_2.R")
 # Set parameters in table 2
 # para_vec[[1]] denotes that n = 50, p_k = 10, K = 20
 para_vec = list()
-para_vec[[1]] <- c(100,rep(10,2))
-para_vec[[2]] <- c(100,rep(10,5))
-para_vec[[3]] <- c(100,rep(10,10))
-para_vec[[4]] <- c(100,rep(10,20))
-para_vec[[5]] <- c(100,rep(10,50))
-para_vec[[6]] <- c(100,rep(10,100))
+para_vec[[1]] <- c(100,rep(500,1))
+para_vec[[2]] <- c(100,rep(250,2))
+para_vec[[3]] <- c(100,rep(100,5))
+para_vec[[4]] <- c(100,rep(50,10))
+para_vec[[5]] <- c(100,rep(20,25))
+para_vec[[6]] <- c(100,rep(10,50))
 runtime.list <- vector(mode="list",length=length(para_vec))
 # number of repetitions
-Rnum <- 5
+Rnum <- 6
 ll = 1
 for(ll in 1:length(para_vec))
 {
@@ -96,7 +96,7 @@ for(ll in 1:length(para_vec))
     for (i in 1:length(pk))
     {
       Aeq[i, j:(j+pk[i]-1)] = 1
-      j = pk[i]
+      j = pk[i] + 1
     }
     beq = matrix(0, nrow = length(pk)) 
     Aineq = matrix(0, nrow = 0, ncol = dim(X)[2])
@@ -113,15 +113,27 @@ for(ll in 1:length(para_vec))
                                              minlam=0,
                                              rtol=1e-07,btol=1e-07,eps=1e-4,
                                              verbose=FALSE,svd=FALSE))[3]
-    runtime[r,3] <- system.time(
-      zfun <- zhou(X, y, penwt, Aeq, beq, Aineq, bineq)
-    )[3]
     
+    gg_try <- try({gg <- system.time(
+      zfun <- zhou(X, y, penwt, Aeq, beq, Aineq, bineq)
+    )}
+    )
+    if (class(gg_try)=="try-error") runtime[r,3] = NA 
+    if (class(gg_try)!="try-error")  runtime[r,3] = gg_try[3]
     cat(runtime[r,],"\n")
   }
   runtime.list[[ll]] <- runtime
 }
 
-lapply(runtime.list, colMeans)
+
+a = runtime.list 
+for (i in 1:length(runtime.list))
+{
+  a[[i]] = runtime.list[[i]][-1,]
+}
+unlist(lapply(a, colMeans))
+save.image("table2.rdata")
+
+
 
 
