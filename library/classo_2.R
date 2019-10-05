@@ -162,10 +162,10 @@ zhou <- function(X, y, penwt, Aeq, beq, Aineq, bineq){
     idxIneqBorder = which(setIneqBorder)
     
     # 여기 계산 불안정 - 제약조건이 1개만(등호 or 부등호) 있을 때*****
-    M = cbind(H[activeCoeffs, activeCoeffs], t(Aeq[, activeCoeffs, drop=F]), 
+    M = cbind(H[activeCoeffs, activeCoeffs, drop=F], t(Aeq[, activeCoeffs, drop=F]), 
               t(Aineq[setIneqBorder, activeCoeffs]))
     M = rbind(M, matrix(rep(0, (neq + nIneqBorder) * dim(M)[2]), nrow = (neq + nIneqBorder)))
-    M[(nrow(M) - neq - nIneqBorder + 1):nrow(M), 1:nActive] = rbind(Aeq[, activeCoeffs], Aineq[idxIneqBorder, activeCoeffs])
+    M[(nrow(M) - neq - nIneqBorder + 1):nrow(M), 1:nActive] = rbind(Aeq[, activeCoeffs, drop=F], Aineq[idxIneqBorder, activeCoeffs])
     
     # calculate derivative
     tryCatch(
@@ -262,7 +262,7 @@ zhou <- function(X, y, penwt, Aeq, beq, Aineq, bineq){
         
         # calculate the derivative for rho * subgradient
         # 여기 계산 불안정 - 제약조건이 1개만 있을 때*****
-        temp = cbind(H[inactiveCoeffs, activeCoeffs], Aeq[, inactiveCoeffs])
+        temp = cbind(H[inactiveCoeffs, activeCoeffs], Aeq[, inactiveCoeffs, drop=F])
         if(nineq == 0) {
           dirSubgrad = - temp %*% dir
         } else {
@@ -338,7 +338,7 @@ zhou <- function(X, y, penwt, Aeq, beq, Aineq, bineq){
         
         # calculate the derivative for rho * subgradient
         # 여기 계산 불안정 - 제약조건이 1개만 있을 때*****
-        temp = cbind(H[inactiveCoeffs, activeCoeffs], Aeq[, inactiveCoeffs])
+        temp = cbind(H[inactiveCoeffs, activeCoeffs, drop=F], Aeq[, inactiveCoeffs, drop=F])
         if(nineq == 0) {
           dirSubgrad = - temp %*% dir
         } else {
@@ -413,7 +413,7 @@ zhou <- function(X, y, penwt, Aeq, beq, Aineq, bineq){
         
         # calculate the derivative for rho * subgradient
         # 여기 계산 불안정 - 제약조건이 1개만 있을 때*****
-        temp = cbind(H[inactiveCoeffs, activeCoeffs], Aeq[, inactiveCoeffs])
+        temp = cbind(H[inactiveCoeffs, activeCoeffs, drop=F], Aeq[, inactiveCoeffs])
         if(nineq == 0) {
           dirSubgrad = - temp %*% dir
         } else {
@@ -481,7 +481,7 @@ zhou <- function(X, y, penwt, Aeq, beq, Aineq, bineq){
         
         # calculate the derivative for rho * subgradient
         # 여기 계산 불안정 - 제약조건이 1개만 있을 때*****
-        temp = cbind(H[inactiveCoeffs, activeCoeffs], Aeq[, inactiveCoeffs])
+        temp = cbind(H[inactiveCoeffs, activeCoeffs, drop=F], Aeq[, inactiveCoeffs, drop=F])
         if(nineq == 0) {
           dirSubgrad = - temp %*% dir
         } else {

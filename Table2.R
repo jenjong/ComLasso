@@ -1,26 +1,33 @@
 rm(list=ls())
 library(Matrix)
 library(Rcpp)
+if(!require("RcppArmadillo")) install.packages("RcppArmadillo")
 library(RcppArmadillo)
+if(!require("devtools")) install.packages("devtools")
 library(devtools)
+if(!require("Rglpk")) install.packages("Rglpk")
 library(Rglpk)
+if(!require("MethylCapSig")) install.packages("MethylCapSig")
 library(MethylCapSig)
 install_github("glmgen/genlasso")
 library(genlasso)
+setwd("~/github/comlasso")
 sourceCpp('./library/inner.cpp')
 source("./library/ComLassoC.R")
+source("./library/classo_2.R")
 # Set parameters in table 2
 # para_vec[[1]] denotes that n = 50, p_k = 10, K = 20
 para_vec = list()
-para_vec[[1]] <- c(50,rep(10,20))
-para_vec[[2]] <- c(50,rep(10,50))
-para_vec[[3]] <- c(50,rep(10,100))
+para_vec[[1]] <- c(100,rep(10,2))
+para_vec[[2]] <- c(100,rep(10,5))
+para_vec[[3]] <- c(100,rep(10,10))
 para_vec[[4]] <- c(100,rep(10,20))
 para_vec[[5]] <- c(100,rep(10,50))
 para_vec[[6]] <- c(100,rep(10,100))
 runtime.list <- vector(mode="list",length=length(para_vec))
 # number of repetitions
-Rnum <- 20
+Rnum <- 5
+ll = 1
 for(ll in 1:length(para_vec))
 {
   n = para_vec[[ll]][1]
@@ -45,9 +52,9 @@ for(ll in 1:length(para_vec))
     B_list[[j]] = B
   }
   
-  runtime<-matrix(0,Rnum,2)
-  colnames(runtime) <-c("comlasso", "genlasso") 
-
+  runtime<-matrix(0,Rnum,3)
+  colnames(runtime) <-c("comlasso", "genlasso", "zhou") 
+  
   for(r in 1:Rnum)
   {
     set.seed(r)
@@ -84,6 +91,19 @@ for(ll in 1:length(para_vec))
     rX <- cbind(1, rX)
     #if (p>n) Cm <- Matrix(Cm, sparse = TRUE) 
     
+    Aeq = matrix(0, nrow = length(pk), ncol = sum(pk))
+    j = 1
+    for (i in 1:length(pk))
+    {
+      Aeq[i, j:(j+pk[i]-1)] = 1
+      j = pk[i]
+    }
+    beq = matrix(0, nrow = length(pk)) 
+    Aineq = matrix(0, nrow = 0, ncol = dim(X)[2])
+    bineq = rep(0, dim(Aineq)[1])
+    penwt = rep(1, sum(pk))
+    
+    
     runtime[r,1] <- system.time(cfun2 <- comLassoC(X,y,pk=pk,lam_min=0,
                                                    tol=1e-08,KKT_check=FALSE) # Prof. Jeon
     )[3]
@@ -93,6 +113,10 @@ for(ll in 1:length(para_vec))
                                              minlam=0,
                                              rtol=1e-07,btol=1e-07,eps=1e-4,
                                              verbose=FALSE,svd=FALSE))[3]
+    runtime[r,3] <- system.time(
+      zfun <- zhou(X, y, penwt, Aeq, beq, Aineq, bineq)
+    )[3]
+    
     cat(runtime[r,],"\n")
   }
   runtime.list[[ll]] <- runtime

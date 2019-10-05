@@ -9,7 +9,6 @@ if(!require("Rglpk")) install.packages("Rglpk")
 library(Rglpk)
 if(!require("MethylCapSig")) install.packages("MethylCapSig")
 library(MethylCapSig)
-
 install_github("glmgen/genlasso")
 library(genlasso)
 setwd("~/github/comlasso")
@@ -19,15 +18,15 @@ source("./library/classo_2.R")
 # Set parameters in table 1
 # para_vec[[1]] denotes that n = 50, p = 200
 para_vec = list()
-para_vec[[1]] <- c(50,200)
-para_vec[[2]] <- c(50,500)
-para_vec[[3]] <- c(50,1000)
+para_vec[[1]] <- c(100,20)
+para_vec[[2]] <- c(100,50)
+para_vec[[3]] <- c(100,100)
 para_vec[[4]] <- c(100,200)
 para_vec[[5]] <- c(100,500)
 para_vec[[6]] <- c(100,1000)
 runtime.list <- vector(mode="list",length=length(para_vec))
 # number of repetitions
-Rnum <- 20
+Rnum <- 6
 ll = 1
 for(ll in 1:length(para_vec))
 {
@@ -99,10 +98,6 @@ for(ll in 1:length(para_vec))
     bineq = rep(0, dim(Aineq)[1])
     penwt = rep(1, pk)
     
-    runtime[r,3] <- system.time(
-      zfun <- zhou(X, y, penwt, Aeq, beq, Aineq, bineq)
-    )[3]
-    
     
     runtime[r,1] <- system.time(cfun2 <- comLassoC(X,y,pk=pk,lam_min=0,
                                                    tol=1e-08,KKT_check=FALSE) # Prof. Jeon
@@ -113,6 +108,9 @@ for(ll in 1:length(para_vec))
                                              minlam=0,
                                              rtol=1e-07,btol=1e-07,eps=1e-4,
                                              verbose=FALSE,svd=FALSE))[3]
+    runtime[r,3] <- system.time(
+      zfun <- zhou(X, y, penwt, Aeq, beq, Aineq, bineq)
+    )[3]
     cat(runtime[r,],"\n")
   }
   runtime.list[[ll]] <- runtime
