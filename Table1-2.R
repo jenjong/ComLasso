@@ -18,15 +18,15 @@ source("./library/classo_2.R")
 # Set parameters in table 1
 # para_vec[[1]] denotes that n = 50, p = 400
 para_vec = list()
-para_vec[[1]] <- c(50,200)
-para_vec[[2]] <- c(100,200)
-para_vec[[3]] <- c(250,200)
-para_vec[[4]] <- c(500,200)
-para_vec[[5]] <- c(1000,200)
-para_vec[[6]] <- c(2000,200)
+para_vec[[1]] <- c(20,250)
+para_vec[[2]] <- c(50,250)
+para_vec[[3]] <- c(100,250)
+para_vec[[4]] <- c(200,250)
+para_vec[[5]] <- c(500,250)
+para_vec[[6]] <- c(1000,250)
 runtime.list <- vector(mode="list",length=length(para_vec))
 # number of repetitions
-Rnum <- 21
+Rnum <- 11
 ll = 1
 for(ll in 1:length(para_vec))
 {
@@ -109,7 +109,7 @@ for(ll in 1:length(para_vec))
                                              rtol=1e-07,btol=1e-07,eps=1e-4,
                                              verbose=FALSE,svd=FALSE))[3]
     runtime[r,3] <- system.time(
-      zfun <- zhou(X, y, penwt, Aeq, beq, Aineq, bineq)
+      zfun <- zhou(X, y, penwt, Aeq, beq, Aineq, bineq,maxiters = length(cfun2$lambda_vec)+1)
     )[3]
     cat(runtime[r,],"\n")
   }
@@ -123,6 +123,13 @@ for (i in 1:length(runtime.list))
   a[[i]] = runtime.list[[i]][-1,]
 }
 matrix(unlist(lapply(a, colMeans)),nrow = 3)
+v = matrix(0,3,6)
+i = 1
+for(i in 1:length(runtime.list))
+{
+  for (j in 1:3)  v[j,i]<- median(runtime.list[[i]][,j])
+}
+v
 save.image("table1-2.rdata")
 
 

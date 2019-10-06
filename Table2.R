@@ -115,7 +115,7 @@ for(ll in 1:length(para_vec))
                                              verbose=FALSE,svd=FALSE))[3]
     
     gg_try <- try({gg <- system.time(
-      zfun <- zhou(X, y, penwt, Aeq, beq, Aineq, bineq)
+      zfun <- zhou(X, y, penwt, Aeq, beq, Aineq, bineq, maxiters = length(cfun2$lambda_vec)+1)
     )}
     )
     if (class(gg_try)=="try-error") runtime[r,3] = NA 
@@ -132,6 +132,13 @@ for (i in 1:length(runtime.list))
   a[[i]] = runtime.list[[i]][-1,]
 }
 unlist(lapply(a, colMeans))
+v = matrix(0,3,6)
+i = 1
+for(i in 1:length(runtime.list))
+{
+  for (j in 1:3)  v[j,i]<- median(runtime.list[[i]][,j])
+}
+v
 save.image("table2.rdata")
 
 

@@ -26,7 +26,7 @@ para_vec[[5]] <- c(100,1000)
 para_vec[[6]] <- c(100,2000)
 runtime.list <- vector(mode="list",length=length(para_vec))
 # number of repetitions
-Rnum <- 21
+Rnum <- 11
 ll = 1
 for(ll in 1:length(para_vec))
 {
@@ -109,12 +109,13 @@ for(ll in 1:length(para_vec))
                                              rtol=1e-07,btol=1e-07,eps=1e-4,
                                              verbose=FALSE,svd=FALSE))[3]
     gg_try <- try({gg <- system.time(
-      zfun <- zhou(X, y, penwt, Aeq, beq, Aineq, bineq)
+      zfun <- zhou(X, y, penwt, Aeq, beq, Aineq, bineq, 
+                   maxiters = length(cfun2$lambda_vec)+1)
     )}
     )
     if (class(gg_try)=="try-error") runtime[r,3] = NA 
     if (class(gg_try)!="try-error")  runtime[r,3] = gg_try[3]
-    
+    cat("LL:", ll,'\n')
     cat(runtime[r,],"\n")
   }
   runtime.list[[ll]] <- runtime

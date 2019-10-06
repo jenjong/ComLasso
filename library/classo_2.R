@@ -3,7 +3,7 @@ source('./library/src/find_rho_max.R')
 if(!require("CVXR")) install.packages("CVXR")
 library("CVXR")
 
-zhou <- function(X, y, penwt, Aeq, beq, Aineq, bineq){
+zhou <- function(X, y, penwt, Aeq, beq, Aineq, bineq, maxiters){
   # grhobla variable로 처리하면 좋을 것 같은 변수 *****
   # : Aeq, beq, Aineq, bineq, ρridge, penidx
   
@@ -54,7 +54,8 @@ zhou <- function(X, y, penwt, Aeq, beq, Aineq, bineq){
   # alrhocate variables arhong path
   neq = dim(Aeq)[1]
   nineq = dim(Aineq)[1]
-  maxiters = 5 * (p + nineq) # max number of path segments to consider
+  # maxiter (wrong!)
+  #maxiters = 5 * (p + nineq) # max number of path segments to consider
   beta_path = matrix(rep(0, p * maxiters), nrow = p) 
   lambda_patheq = matrix(rep(0, neq * maxiters), nrow = neq) # dual variables for equality
   mu_pathineq = matrix(rep(0, nineq * maxiters), nrow = nineq) # dual variables for inequality
