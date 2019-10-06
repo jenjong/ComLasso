@@ -127,7 +127,7 @@ for (i in 1:length(runtime.list))
   a[[i]] = runtime.list[[i]][-1,]
 }
 matrix(unlist(lapply(a, colMeans, na.rm = T)),nrow = 3)
-rm(list = c("B", "B_list", "Cm", "gfun", "sigma"))
+rm(list = c("B", "B_list", "Cm", "gfun", "sigma","svdFit"))
 save.image("table1.rdata")
 
 
