@@ -20,13 +20,13 @@ source("./library/classo_2.R")
 para_vec = list()
 para_vec[[1]] <- c(100,20)
 para_vec[[2]] <- c(100,50)
-para_vec[[3]] <- c(100,100)
-para_vec[[4]] <- c(100,200)
-para_vec[[5]] <- c(100,500)
-para_vec[[6]] <- c(100,1000)
+para_vec[[3]] <- c(100,200)
+para_vec[[4]] <- c(100,500)
+para_vec[[5]] <- c(100,1000)
+para_vec[[6]] <- c(100,2000)
 runtime.list <- vector(mode="list",length=length(para_vec))
 # number of repetitions
-Rnum <- 6
+Rnum <- 21
 ll = 1
 for(ll in 1:length(para_vec))
 {
@@ -108,9 +108,13 @@ for(ll in 1:length(para_vec))
                                              minlam=0,
                                              rtol=1e-07,btol=1e-07,eps=1e-4,
                                              verbose=FALSE,svd=FALSE))[3]
-    runtime[r,3] <- system.time(
+    gg_try <- try({gg <- system.time(
       zfun <- zhou(X, y, penwt, Aeq, beq, Aineq, bineq)
-    )[3]
+    )}
+    )
+    if (class(gg_try)=="try-error") runtime[r,3] = NA 
+    if (class(gg_try)!="try-error")  runtime[r,3] = gg_try[3]
+    
     cat(runtime[r,],"\n")
   }
   runtime.list[[ll]] <- runtime
@@ -122,7 +126,8 @@ for (i in 1:length(runtime.list))
 {
   a[[i]] = runtime.list[[i]][-1,]
 }
-unlist(lapply(a, colMeans))
+matrix(unlist(lapply(a, colMeans, na.rm = T)),nrow = 3)
+rm(list = c("B", "B_list", "Cm", "gfun", "sigma"))
 save.image("table1.rdata")
 
 

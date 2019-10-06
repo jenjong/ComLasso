@@ -16,17 +16,17 @@ sourceCpp('./library/inner.cpp')
 source("./library/ComLassoC.R")
 source("./library/classo_2.R")
 # Set parameters in table 1
-# para_vec[[1]] denotes that n = 50, p = 200
+# para_vec[[1]] denotes that n = 50, p = 400
 para_vec = list()
-para_vec[[1]] <- c(20,200)
-para_vec[[2]] <- c(50,200)
-para_vec[[3]] <- c(100,200)
-para_vec[[4]] <- c(200,200)
-para_vec[[5]] <- c(500,200)
-para_vec[[6]] <- c(1000,200)
+para_vec[[1]] <- c(50,200)
+para_vec[[2]] <- c(100,200)
+para_vec[[3]] <- c(250,200)
+para_vec[[4]] <- c(500,200)
+para_vec[[5]] <- c(1000,200)
+para_vec[[6]] <- c(2000,200)
 runtime.list <- vector(mode="list",length=length(para_vec))
 # number of repetitions
-Rnum <- 6
+Rnum <- 21
 ll = 1
 for(ll in 1:length(para_vec))
 {
@@ -122,7 +122,7 @@ for (i in 1:length(runtime.list))
 {
   a[[i]] = runtime.list[[i]][-1,]
 }
-unlist(lapply(a, colMeans))
+matrix(unlist(lapply(a, colMeans)),nrow = 3)
 save.image("table1-2.rdata")
 
 

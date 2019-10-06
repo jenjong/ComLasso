@@ -26,7 +26,7 @@ para_vec[[5]] <- c(100,rep(20,25))
 para_vec[[6]] <- c(100,rep(10,50))
 runtime.list <- vector(mode="list",length=length(para_vec))
 # number of repetitions
-Rnum <- 6
+Rnum <- 21
 ll = 1
 for(ll in 1:length(para_vec))
 {
